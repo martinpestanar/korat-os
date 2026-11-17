@@ -12,3 +12,9 @@ description: Contexto técnico y personal maestro de Martín Korat. Usar siempre
 - **Trigger Activo:** `trg_saas_lead_to_finance` (cuando un lead pasa a `paying`, registra ingreso automático en `korat_finances`).
 - **Ubicación de Martín:** Huaral, Lima, Perú.
 - **Perfil Maestro:** Leer `korat-perfil-maestro.md` en la raíz del workspace.
+- **Regla de Guiones (`korat-guionista`):**
+  - Claridad nivel niño de 11 años (cero tecnicismos, frases cortas; si no se entiende fácil, no funciona).
+  - Formato *yapping* (40-90s), español neutro con "tú" (sin voseo), dirigirse a dueñas de salones como **"amiga"**.
+  - Serie fija: `"Haz que vuelva, tip número X"` (en pantalla: `"Haz que vuelva #X"`).
+  - Estructura "Y, Pero, Por lo tanto" (ABT) camuflada + variar el Pack de 13 Ganchos.
+  - 9 de cada 10 videos sin oferta (solo valor); entregar siempre en 2 versiones (**A completo** y **B anclas**).

@@ -2865,85 +2865,123 @@ export default function KoratCockpit() {
                           </div>
 
                           {editingScript?.id === sc.id && (
-                            <form
-                              onSubmit={saveEditingScript}
-                              className="mt-3 space-y-2.5 rounded-2xl border border-sky-200 bg-sky-50/50 p-3.5"
+                            <div
+                              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
+                              onClick={() => setEditingScript(null)}
                             >
-                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                                <input
-                                  type="text"
-                                  required
-                                  value={editingScript.title}
-                                  onChange={(e) =>
-                                    setEditingScript({ ...editingScript, title: e.target.value })
-                                  }
-                                  className="sm:col-span-2 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold"
-                                />
-                                <select
-                                  value={editingScript.platform}
-                                  onChange={(e) =>
-                                    setEditingScript({
-                                      ...editingScript,
-                                      platform: e.target.value as KoratScript['platform'],
-                                    })
-                                  }
-                                  className="rounded-xl border border-stone-200 bg-white px-2 py-1.5 text-xs font-bold"
-                                >
-                                  <option value="tiktok">TikTok</option>
-                                  <option value="instagram">IG Reels</option>
-                                  <option value="facebook">FB Reels</option>
-                                  <option value="youtube">YT Shorts</option>
-                                </select>
-                              </div>
-                              <input
-                                type="text"
-                                value={editingScript.hook || ''}
-                                onChange={(e) =>
-                                  setEditingScript({ ...editingScript, hook: e.target.value })
-                                }
-                                placeholder="Ganchos / Texto en video..."
-                                className="w-full rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs"
-                              />
-                              <textarea
-                                rows={5}
-                                value={editingScript.body || ''}
-                                onChange={(e) =>
-                                  setEditingScript({ ...editingScript, body: e.target.value })
-                                }
-                                placeholder="Guion completo..."
-                                className="w-full rounded-xl border border-stone-200 bg-white p-2.5 text-xs leading-relaxed"
-                              />
-                              <textarea
-                                rows={2}
-                                value={editingScript.copy_description || ''}
-                                onChange={(e) =>
-                                  setEditingScript({
-                                    ...editingScript,
-                                    copy_description: e.target.value,
-                                  })
-                                }
-                                placeholder="Copy descripción..."
-                                className="w-full rounded-xl border border-stone-200 bg-white p-2.5 text-xs"
-                              />
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingScript(null)}
-                                  className="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-white"
-                                >
-                                  Cancelar
-                                </button>
-                                <button
-                                  type="submit"
-                                  className="rounded-xl bg-sky-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-sky-600"
-                                >
-                                  Guardar Cambios
-                                </button>
-                              </div>
-                            </form>
+                              <form
+                                onSubmit={saveEditingScript}
+                                onClick={(e) => e.stopPropagation()}
+                                className="max-h-[90vh] w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl"
+                              >
+                                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                                  <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900">
+                                    <span>✏️</span> Editar Guion
+                                  </h3>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingScript(null)}
+                                    className="rounded-xl p-1.5 text-slate-400 hover:bg-stone-100 hover:text-slate-700"
+                                  >
+                                    <X className="h-5 w-5" />
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                  <div className="sm:col-span-2">
+                                    <label className="mb-1 block text-xs font-bold text-slate-500">Título</label>
+                                    <input
+                                      type="text"
+                                      required
+                                      value={editingScript.title}
+                                      onChange={(e) =>
+                                        setEditingScript({ ...editingScript, title: e.target.value })
+                                      }
+                                      className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm font-bold outline-none focus:border-sky-400 focus:bg-white"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="mb-1 block text-xs font-bold text-slate-500">Plataforma</label>
+                                    <select
+                                      value={editingScript.platform}
+                                      onChange={(e) =>
+                                        setEditingScript({
+                                          ...editingScript,
+                                          platform: e.target.value as KoratScript['platform'],
+                                        })
+                                      }
+                                      className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3.5 py-2.5 text-sm font-bold outline-none focus:border-sky-400 focus:bg-white"
+                                    >
+                                      <option value="tiktok">TikTok</option>
+                                      <option value="instagram">IG Reels</option>
+                                      <option value="facebook">FB Reels</option>
+                                      <option value="youtube">YT Shorts</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="mb-1 block text-xs font-bold text-slate-500">Gancho / Texto en video</label>
+                                  <input
+                                    type="text"
+                                    value={editingScript.hook || ''}
+                                    onChange={(e) =>
+                                      setEditingScript({ ...editingScript, hook: e.target.value })
+                                    }
+                                    placeholder="Ganchos / Texto en video..."
+                                    className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none focus:border-sky-400 focus:bg-white"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="mb-1 block text-xs font-bold text-slate-500">Guion completo</label>
+                                  <textarea
+                                    rows={10}
+                                    value={editingScript.body || ''}
+                                    onChange={(e) =>
+                                      setEditingScript({ ...editingScript, body: e.target.value })
+                                    }
+                                    placeholder="Guion completo..."
+                                    className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] p-4 text-sm leading-relaxed outline-none focus:border-sky-400 focus:bg-white"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="mb-1 block text-xs font-bold text-slate-500">Copy / Notas visuales</label>
+                                  <textarea
+                                    rows={5}
+                                    value={editingScript.copy_description || ''}
+                                    onChange={(e) =>
+                                      setEditingScript({
+                                        ...editingScript,
+                                        copy_description: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Copy descripción..."
+                                    className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] p-4 text-sm leading-relaxed outline-none focus:border-sky-400 focus:bg-white"
+                                  />
+                                </div>
+
+                                <div className="flex justify-end gap-2.5 border-t border-stone-100 pt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingScript(null)}
+                                    className="rounded-2xl border border-stone-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-stone-50"
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    className="rounded-2xl bg-sky-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-sky-600"
+                                  >
+                                    Guardar Cambios
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
                           )}
 
-                          {isExpanded && editingScript?.id !== sc.id && (
+                          {isExpanded && (
                             <div className="mt-3 space-y-2.5 border-t border-stone-200/80 pt-3 text-xs text-slate-700">
                               {sc.hook && (
                                 <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3 text-sm font-semibold text-teal-900">

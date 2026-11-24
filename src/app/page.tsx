@@ -28,6 +28,10 @@ import {
   CalendarCheck,
   Trash2,
   Pencil,
+  Maximize2,
+  Copy,
+  Check,
+  X,
 } from 'lucide-react';
 import {
   supabase,
@@ -62,11 +66,49 @@ const NAV_ITEMS: { id: NavTab; label: string; icon: React.ElementType; color: st
   { id: 'rachas', label: 'Rachas', icon: Trophy, color: 'text-amber-500' },
 ];
 
-const CATEGORY_STYLES: Record<TaskCategory, { label: string; badge: string }> = {
-  producto: { label: 'Producto SaaS', badge: 'bg-sky-100 text-sky-700 border-sky-200' },
-  ventas_contenido: { label: 'Ventas / TikTok', badge: 'bg-orange-100 text-orange-700 border-orange-200' },
-  mantenimiento: { label: 'FB / Rutina', badge: 'bg-teal-100 text-teal-700 border-teal-200' },
-  personal: { label: 'Personal / Gatos', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+const CATEGORY_STYLES: Record<
+  TaskCategory,
+  {
+    label: string;
+    badge: string;
+    cardBorder: string;
+    cardBg: string;
+    accentBar: string;
+    tag: string;
+  }
+> = {
+  producto: {
+    label: 'Nilah IA · Producto SaaS',
+    badge: 'bg-sky-100 text-sky-800 border-sky-200',
+    cardBorder: 'border-sky-200 hover:border-sky-400',
+    cardBg: 'from-sky-500/[0.04] to-white',
+    accentBar: 'bg-gradient-to-b from-sky-400 to-sky-600',
+    tag: 'Foco Central',
+  },
+  ventas_contenido: {
+    label: 'Ventas & Clientes · TikTok',
+    badge: 'bg-amber-100 text-amber-800 border-amber-200',
+    cardBorder: 'border-amber-200 hover:border-amber-400',
+    cardBg: 'from-amber-500/[0.04] to-white',
+    accentBar: 'bg-gradient-to-b from-amber-400 to-amber-600',
+    tag: 'Crecimiento',
+  },
+  mantenimiento: {
+    label: 'FB / Rutina & Mantenimiento',
+    badge: 'bg-teal-100 text-teal-800 border-teal-200',
+    cardBorder: 'border-teal-200 hover:border-teal-400',
+    cardBg: 'from-teal-500/[0.04] to-white',
+    accentBar: 'bg-gradient-to-b from-teal-400 to-teal-600',
+    tag: 'Operativo',
+  },
+  personal: {
+    label: 'Personal & Gatos / Energía',
+    badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    cardBorder: 'border-emerald-200 hover:border-emerald-400',
+    cardBg: 'from-emerald-500/[0.04] to-white',
+    accentBar: 'bg-gradient-to-b from-emerald-400 to-emerald-600',
+    tag: 'Vida & Salud',
+  },
 };
 
 export default function KoratCockpit() {
@@ -99,8 +141,11 @@ export default function KoratCockpit() {
   const [newScriptPlatform, setNewScriptPlatform] = useState<KoratScript['platform']>('tiktok');
   const [newScriptStatus, setNewScriptStatus] = useState<KoratScript['status']>('sin_grabar');
   const [showNewScriptForm, setShowNewScriptForm] = useState(false);
-  const [scriptFilter, setScriptFilter] = useState<'all' | KoratScript['status']>('all');
+  const [scriptFilter, setScriptFilter] = useState<'pendientes' | KoratScript['status']>('pendientes');
   const [expandedScriptId, setExpandedScriptId] = useState<string | null>(null);
+  const [editingScript, setEditingScript] = useState<KoratScript | null>(null);
+  const [readingScript, setReadingScript] = useState<KoratScript | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [contentSubTab, setContentSubTab] = useState<'guiones' | 'pizarra'>('guiones');
   const [inspirations, setInspirations] = useState<KoratInspiration[]>([]);
   const [pillarFilter, setPillarFilter] = useState<'all' | KoratInspiration['pillar']>('all');
@@ -111,7 +156,14 @@ export default function KoratCockpit() {
   const [newInspDesc, setNewInspDesc] = useState('');
   const [newInspImg, setNewInspImg] = useState('');
   const [newInspRef, setNewInspRef] = useState('');
-  const [saasSubTab, setSaasSubTab] = useState<'clientes' | 'producto'>('clientes');
+  const [saasSubTab, setSaasSubTab] = useState<'clientes' | 'embudo' | 'producto'>('clientes');
+  const [leadFilterType, setLeadFilterType] = useState<'all' | 'calientes' | 'frio' | 'reactivar'>('all');
+  const [copiedLeadMsgId, setCopiedLeadMsgId] = useState<string | null>(null);
+  const [huntSalonName, setHuntSalonName] = useState('');
+  const [huntOwnerName, setHuntOwnerName] = useState('');
+  const [huntWhatsapp, setHuntWhatsapp] = useState('');
+  const [huntOrigin, setHuntOrigin] = useState<'google_maps' | 'tiktok_inactivo' | 'tiktok_dm'>('google_maps');
+  const [huntZone, setHuntZone] = useState('');
   const [nilahItems, setNilahItems] = useState<KoratNilahItem[]>([]);
   const [showNewNilahForm, setShowNewNilahForm] = useState(false);
   const [newNilahKind, setNewNilahKind] = useState<'feature' | 'priority_idea'>('priority_idea');
@@ -204,6 +256,12 @@ export default function KoratCockpit() {
     refreshCockpit();
   }
 
+  async function deleteTask(id: string) {
+    setTasks(tasks.filter((t) => t.id !== id));
+    await supabase.from('korat_tasks').delete().eq('id', id);
+    refreshCockpit();
+  }
+
   async function checkInStreak(streak: KoratStreak) {
     if (!todayStr || streak.last_checked_date === todayStr) return;
     await supabase.rpc('check_in_streak', { p_streak_id: streak.id });
@@ -253,6 +311,40 @@ export default function KoratCockpit() {
     refreshCockpit();
   }
 
+  async function saveEditingScript(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingScript) return;
+    await supabase
+      .from('korat_scripts')
+      .update({
+        title: editingScript.title,
+        hook: editingScript.hook,
+        body: editingScript.body,
+        copy_description: editingScript.copy_description,
+        publish_date: editingScript.publish_date || null,
+        reference_url: editingScript.reference_url,
+        platform: editingScript.platform,
+        status: editingScript.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', editingScript.id);
+    setScripts(scripts.map((s) => (s.id === editingScript.id ? editingScript : s)));
+    setEditingScript(null);
+    refreshCockpit();
+  }
+
+  async function deleteScript(id: string) {
+    setScripts(scripts.filter((s) => s.id !== id));
+    await supabase.from('korat_scripts').delete().eq('id', id);
+    refreshCockpit();
+  }
+
+  function copyText(text: string, id: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1800);
+  }
+
   async function addLead(e: React.FormEvent) {
     e.preventDefault();
     if (!newLeadSalon.trim()) return;
@@ -296,6 +388,54 @@ export default function KoratCockpit() {
       .update({ status: 'paying', monthly_amount: 150 })
       .eq('id', lead.id);
     loadAllData();
+  }
+
+  function copyLeadText(text: string, id: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedLeadMsgId(id);
+    setTimeout(() => setCopiedLeadMsgId(null), 2000);
+  }
+
+  async function deleteLead(id: string) {
+    setLeads(leads.filter((l) => l.id !== id));
+    await supabase.from('korat_saas_leads').delete().eq('id', id);
+    refreshCockpit();
+  }
+
+  async function addHuntLead(e: React.FormEvent) {
+    e.preventDefault();
+    if (!huntSalonName.trim()) return;
+    const originLabel = huntOrigin === 'google_maps' 
+      ? '🗺️ Google Maps' 
+      : huntOrigin === 'tiktok_inactivo' 
+        ? '💤 TikTok (Inactivo 1-2 meses)' 
+        : '🔥 TikTok DM';
+    const notesStr = `[ORIGEN: ${originLabel}]${huntZone ? ' · Zona: ' + huntZone.trim() : ''}`;
+    
+    const { data } = await supabase
+      .from('korat_saas_leads')
+      .insert({
+        salon_name: huntSalonName.trim(),
+        owner_name: huntOwnerName.trim() || null,
+        whatsapp: huntWhatsapp.trim() || null,
+        status: 'lead',
+        monthly_amount: 0,
+        billing_day: 1,
+        document_type: 'boleta',
+        modules: [],
+        notes: notesStr,
+      })
+      .select()
+      .single();
+
+    if (data) {
+      setLeads([data, ...leads]);
+      refreshCockpit();
+    }
+    setHuntSalonName('');
+    setHuntOwnerName('');
+    setHuntWhatsapp('');
+    setHuntZone('');
   }
 
   async function saveLeadWhatsapp(leadId: string) {
@@ -688,7 +828,7 @@ export default function KoratCockpit() {
                 <div className={`rounded-3xl border border-stone-200/80 border-t-4 ${cockpit.recorded_today >= 3 ? 'border-t-rose-500' : 'border-t-teal-500'} bg-white p-5 shadow-sm`}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Grabados Hoy
+                      Contenido Hoy
                     </span>
                     <div className={`rounded-xl p-2 ${cockpit.recorded_today >= 3 ? 'bg-rose-50 text-rose-500' : 'bg-teal-50 text-teal-500'}`}>
                       <Film className="h-4 w-4" />
@@ -705,104 +845,211 @@ export default function KoratCockpit() {
                       style={{ width: `${recordedPct}%` }}
                     />
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-500">Límite sano de voz</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Grabados hoy · Publicados: {scripts.filter((s) => s.status === 'publicado').length}
+                  </p>
                 </div>
               </section>
 
               <section className="rounded-3xl border border-stone-200/80 bg-white p-6 shadow-sm">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-4">
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">Hoy en tu oficina</h2>
-                    <p className="text-xs text-slate-500">
-                      Tus prioridades del día para arrancar con claridad a las 11:30 am.
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-3 w-3 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+                      </span>
+                      <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+                        Foco de Hoy · Pendientes Clave
+                      </h2>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Vista de alto impacto para trabajar con máxima claridad mental a partir de las 11:30 am.
                     </p>
                   </div>
-                  <div className="inline-flex rounded-xl border border-stone-200 bg-[#FAF8F5] p-0.5 text-[11px] font-semibold">
-                    {(['all', 'pending', 'done'] as const).map((f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => setTaskFilter(f)}
-                        className={`rounded-lg px-2.5 py-1 transition ${
-                          taskFilter === f
-                            ? 'bg-white text-sky-700 shadow-xs'
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        {f === 'all' ? 'Todas' : f === 'pending' ? 'Pendientes' : 'Hechas'}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex rounded-2xl border border-stone-200 bg-[#FAF8F5] p-1 text-xs font-semibold">
+                      {(['all', 'pending', 'done'] as const).map((f) => {
+                        const count = f === 'all' 
+                          ? tasks.length 
+                          : f === 'pending' 
+                            ? tasks.filter((t) => t.status === 'pending').length 
+                            : tasks.filter((t) => t.status === 'done').length;
+                        return (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => setTaskFilter(f)}
+                            className={`rounded-xl px-3 py-1.5 transition ${
+                              taskFilter === f
+                                ? 'bg-white text-sky-700 shadow-xs'
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            {f === 'all' ? 'Todas' : f === 'pending' ? 'Pendientes' : 'Hechas'}
+                            <span className="ml-1.5 rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
-                <form onSubmit={addTask} className="mb-4 flex flex-col gap-2 sm:flex-row">
-                  <input
-                    type="text"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Ej: Mejorar UX móvil del módulo Inbox..."
-                    className="flex-1 rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                  />
-                  <select
-                    value={newTaskCategory}
-                    onChange={(e) => setNewTaskCategory(e.target.value as TaskCategory)}
-                    className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-sky-400"
-                  >
-                    <option value="producto">Producto SaaS</option>
-                    <option value="ventas_contenido">Ventas / TikTok</option>
-                    <option value="mantenimiento">FB / Rutina</option>
-                    <option value="personal">Personal / Gatos</option>
-                  </select>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 active:scale-95"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Agregar
-                  </button>
+                {/* Formulario rápido para nueva tarea */}
+                <form onSubmit={addTask} className="mb-6 flex flex-col gap-2 rounded-2xl border border-stone-200/70 bg-[#FAF8F5] p-3 sm:flex-row sm:items-center">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      placeholder="Escribe un pendiente clave... (Ej: Mejorar vitrina digital a Génesis)"
+                      className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={newTaskCategory}
+                      onChange={(e) => setNewTaskCategory(e.target.value as TaskCategory)}
+                      className="rounded-xl border border-stone-200 bg-white px-3 py-3 text-xs font-bold text-slate-700 outline-none transition focus:border-sky-500"
+                    >
+                      <option value="producto">🚀 Nilah IA · Producto</option>
+                      <option value="ventas_contenido">🔥 Ventas & TikTok</option>
+                      <option value="mantenimiento">🌿 FB & Rutina</option>
+                      <option value="personal">🐾 Personal & Gatos</option>
+                    </select>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-500 px-5 py-3 text-xs font-extrabold text-white shadow-sm transition hover:opacity-95 active:scale-95"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Añadir
+                    </button>
+                  </div>
                 </form>
 
                 {loading ? (
-                  <p className="text-sm text-slate-400">Cargando tu oficina...</p>
+                  <div className="py-12 text-center">
+                    <p className="text-sm text-slate-400">Cargando tu oficina...</p>
+                  </div>
                 ) : filteredTasks.length === 0 ? (
-                  <p className="rounded-2xl bg-[#FAF8F5] p-4 text-center text-sm text-slate-500">
-                    No hay tareas en esta vista.
-                  </p>
+                  <div className="rounded-3xl border border-dashed border-stone-200 bg-[#FAF8F5]/80 p-10 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 mb-3">
+                      <Compass className="h-6 w-6" />
+                    </div>
+                    <p className="text-base font-bold text-slate-800">
+                      {taskFilter === 'pending'
+                        ? '¡Excelente! No tienes pendientes activos en este momento.'
+                        : taskFilter === 'done'
+                          ? 'Aún no has completado pendientes hoy.'
+                          : 'No hay pendientes registrados.'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Mantén la vibra ligera y enfócate en tus 3 bloques del día.
+                    </p>
+                  </div>
                 ) : (
-                  <ul className="space-y-2.5">
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                     {filteredTasks.map((task) => {
                       const style = CATEGORY_STYLES[task.category] || CATEGORY_STYLES.producto;
+                      const isDone = task.status === 'done';
                       return (
-                        <li
+                        <div
                           key={task.id}
-                          onClick={() => toggleTask(task)}
-                          className="flex cursor-pointer items-center justify-between rounded-2xl border border-stone-100 bg-[#FAF8F5]/60 px-4 py-3 transition hover:border-sky-200 hover:bg-sky-50/30"
+                          className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border bg-gradient-to-br p-5 transition-all duration-200 ${
+                            isDone
+                              ? 'border-stone-200/80 bg-stone-50/60 opacity-60'
+                              : `${style.cardBorder} ${style.cardBg} shadow-xs hover:shadow-md hover:-translate-y-0.5`
+                          }`}
                         >
-                          <div className="flex items-center gap-3">
-                            {task.status === 'done' ? (
-                              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-slate-300" />
-                            )}
-                            <span
-                              className={`text-sm font-medium ${
-                                task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-800'
+                          {/* Barra de acento lateral vistosa */}
+                          <div
+                            className={`absolute left-0 top-0 bottom-0 w-2 transition-all ${
+                              isDone ? 'bg-stone-300' : style.accentBar
+                            }`}
+                          />
+
+                          <div>
+                            {/* Cabecera de la tarjeta */}
+                            <div className="flex items-center justify-between gap-2 pl-2 mb-3">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
+                                    isDone ? 'bg-stone-100 text-stone-500 border-stone-200' : style.badge
+                                  }`}
+                                >
+                                  {style.label}
+                                </span>
+                                <span className="rounded-md bg-stone-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                                  {style.tag}
+                                </span>
+                              </div>
+
+                              {/* Botón de eliminar */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteTask(task.id);
+                                }}
+                                className="rounded-lg p-1.5 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                                title="Eliminar pendiente"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+
+                            {/* Título grande y detallado */}
+                            <div
+                              onClick={() => toggleTask(task)}
+                              className="cursor-pointer pl-2 select-none"
+                            >
+                              <h3
+                                className={`text-base font-extrabold leading-snug tracking-tight transition ${
+                                  isDone
+                                    ? 'text-slate-400 line-through'
+                                    : 'text-slate-900 group-hover:text-slate-950'
+                                }`}
+                              >
+                                {task.title}
+                              </h3>
+                            </div>
+                          </div>
+
+                          {/* Footer de la tarjeta con acción rápida */}
+                          <div className="mt-4 flex items-center justify-between border-t border-stone-100/80 pt-3 pl-2">
+                            <span className="text-[11px] font-semibold text-slate-400">
+                              {task.scheduled_date ? `Fecha: ${task.scheduled_date}` : 'Para hoy'}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleTask(task)}
+                              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                                isDone
+                                  ? 'bg-stone-200/80 text-stone-700 hover:bg-stone-300'
+                                  : 'bg-white text-slate-800 shadow-xs border border-stone-200/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'
                               }`}
                             >
-                              {task.title}
-                            </span>
+                              {isDone ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                  <span>Hecho</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Circle className="h-4 w-4 text-slate-400 group-hover:text-emerald-500" />
+                                  <span>Marcar listo</span>
+                                </>
+                              )}
+                            </button>
                           </div>
-                          <span
-                            className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${style.badge}`}
-                          >
-                            {style.label}
-                          </span>
-                        </li>
+                        </div>
                       );
                     })}
-                  </ul>
-                )}
-              </section>
+                  </div>
+                )}</section>
             </>
           )}
 
@@ -819,14 +1066,25 @@ export default function KoratCockpit() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  👥 Clientes & Leads
+                  👥 Clientes Activos ({leads.filter((l) => l.status === 'paying').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSaasSubTab('embudo')}
+                  className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+                    saasSubTab === 'embudo'
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  🎯 Embudo & Caza Fría ({leads.filter((l) => l.status !== 'paying').length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setSaasSubTab('producto')}
                   className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
                     saasSubTab === 'producto'
-                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs'
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -834,7 +1092,296 @@ export default function KoratCockpit() {
                 </button>
               </div>
 
-              {saasSubTab === 'producto' ? (
+              {saasSubTab === 'embudo' ? (
+                <div className="space-y-6">
+                  {/* Banner Guía Táctica del Embudo */}
+                  <section className="rounded-3xl border border-orange-200/80 bg-gradient-to-br from-orange-50 via-amber-50/50 to-white p-6 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-3 w-3 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+                          </span>
+                          <span className="text-xs font-extrabold uppercase tracking-wider text-orange-600">
+                            Estrategia de Prospección & Cierre (Martín + 6K TikTok)
+                          </span>
+                        </div>
+                        <h2 className="mt-1 text-xl font-extrabold text-slate-900">
+                          Máquina de Caza en Frío & Reactivación
+                        </h2>
+                        <p className="mt-1 max-w-2xl text-xs text-slate-600 leading-relaxed">
+                          La clave con desconocidos: <strong>no vendas de golpe</strong>. Despierta curiosidad, valida si tienen vitrina digital y usa tu TikTok de 6,500 seguidores como <strong>prueba social</strong> para generar confianza inmediata.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-2xl border border-orange-200 bg-white p-3 text-center shadow-xs">
+                          <p className="text-[10px] font-bold uppercase text-slate-400">Meta Diaria</p>
+                          <p className="text-lg font-black text-orange-600">15 Leads</p>
+                        </div>
+                        <div className="rounded-2xl border border-stone-200 bg-white p-3 text-center shadow-xs">
+                          <p className="text-[10px] font-bold uppercase text-slate-400">En Seguimiento</p>
+                          <p className="text-lg font-black text-slate-800">{leads.filter((l) => l.status !== 'paying').length}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Las 3 Plantillas Maestras para Copiar y Mandar */}
+                    <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+                      {/* Script 1: Maps en Frío */}
+                      <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-extrabold text-sky-800 uppercase">
+                            1. Frío Google Maps
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyLeadText("¡Hola! Vi su salón en Google Maps y me encantaron los trabajos que tienen. Quería hacerles una consulta rápida: ¿tienen catálogo interactivo para mandar por WhatsApp cuando una clienta nueva pregunta precios, o lo mandan en fotos sueltas?", "script_maps")}
+                            className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-stone-200"
+                          >
+                            {copiedLeadMsgId === 'script_maps' ? '✓ Copiado' : 'Copiar'}
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-700 italic">
+                          "¡Hola! Vi su salón en Google Maps y me encantaron los trabajos que tienen. Quería hacerles una consulta rápida: ¿tienen catálogo interactivo para mandar por WhatsApp cuando una clienta nueva pregunta precios, o lo mandan en fotos sueltas?"
+                        </p>
+                        <p className="mt-2 text-[10px] font-semibold text-slate-400">Pica curiosidad · Cero venta dura</p>
+                      </div>
+
+                      {/* Script 2: Reactivación 1-2 Meses (Con TikTok) */}
+                      <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 uppercase">
+                            2. Reactivar / Vistos
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyLeadText("¡Hola [Nombre]! Te escribí hace unas semanas por el sistema de salones. Como andamos subiendo contenido en TikTok sobre cómo aumentar clientas (ya somos más de 6,500 en la comunidad), te comparto un tip de catálogo rápido para tu salón: tiktok.com/@martin.koratflow. Avísame si pudiste armar tu vitrina digital o si te creo una demo de regalo.", "script_reactivar")}
+                            className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-stone-200"
+                          >
+                            {copiedLeadMsgId === 'script_reactivar' ? '✓ Copiado' : 'Copiar'}
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-700 italic">
+                          "¡Hola! Te escribí hace unas semanas por el sistema. Como andamos subiendo contenido en TikTok sobre cómo captar clientas (ya somos +6.5k), te comparto un tip rápido de catálogo para tu salón: [LINK TIKTOK]. Avísame si quieres tu demo de regalo."
+                        </p>
+                        <p className="mt-2 text-[10px] font-semibold text-slate-400">Aporta valor + Prueba social de 6k</p>
+                      </div>
+
+                      {/* Script 3: Audio de Martín */}
+                      <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 uppercase">
+                            3. Nota de Voz (Martín)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyLeadText("Genial, mira, justo creamos Nilah para salones como el tuyo. Les armamos una vitrina digital lista para WhatsApp con sus fotos y precios para no perder tiempo escribiendo lo mismo 20 veces. Si quieres te armo una demo gratis de 2 minutos con el nombre de tu salón para que veas cómo se vería, ¿te la paso por aquí?", "script_audio")}
+                            className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-stone-200"
+                          >
+                            {copiedLeadMsgId === 'script_audio' ? '✓ Copiado' : 'Copiar'}
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-700 italic">
+                          "Genial, mira, justo creamos Nilah para salones como el tuyo. Les armamos su vitrina lista para WhatsApp para no perder tiempo escribiendo precios. Si quieres te armo una demo gratis de 2 min con tu nombre para que la veas, ¿te la paso?"
+                        </p>
+                        <p className="mt-2 text-[10px] font-semibold text-slate-400">Audio 20 seg · Tono relajado y seguro</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Formulario Rápido: Cargar Lead de Caza */}
+                  <section className="rounded-3xl border border-stone-200/80 bg-white p-6 shadow-sm">
+                    <h3 className="text-base font-extrabold text-slate-900 mb-1">
+                      Cargar Salón Contactado (Modo Caza)
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-4">
+                      Registra en segundos el salón que encontraste en Google Maps o que te escribió en TikTok.
+                    </p>
+
+                    <form onSubmit={addHuntLead} className="space-y-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                        <input
+                          type="text"
+                          value={huntSalonName}
+                          onChange={(e) => setHuntSalonName(e.target.value)}
+                          placeholder="Nombre del Salón (ej: Beauty Lounge)*"
+                          className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none focus:border-orange-400 focus:bg-white sm:col-span-1"
+                          required
+                        />
+                        <input
+                          type="text"
+                          value={huntOwnerName}
+                          onChange={(e) => setHuntOwnerName(e.target.value)}
+                          placeholder="Dueña / Administradora (opcional)"
+                          className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none focus:border-orange-400 focus:bg-white"
+                        />
+                        <input
+                          type="text"
+                          value={huntWhatsapp}
+                          onChange={(e) => setHuntWhatsapp(e.target.value)}
+                          placeholder="WhatsApp (9 dígitos)"
+                          className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none focus:border-orange-400 focus:bg-white"
+                        />
+                        <input
+                          type="text"
+                          value={huntZone}
+                          onChange={(e) => setHuntZone(e.target.value)}
+                          placeholder="Distrito / Zona (ej: Surco, Ate, Huaral)"
+                          className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none focus:border-orange-400 focus:bg-white"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-600">Origen:</span>
+                          <select
+                            value={huntOrigin}
+                            onChange={(e) => setHuntOrigin(e.target.value as any)}
+                            className="rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none"
+                          >
+                            <option value="google_maps">🗺️ Google Maps (Frío)</option>
+                            <option value="tiktok_inactivo">💤 TikTok (Inactivo / Visto hace 1-2 meses)</option>
+                            <option value="tiktok_dm">🔥 TikTok DM (Lead Caliente)</option>
+                          </select>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-xs font-extrabold text-white shadow-xs transition hover:opacity-95 active:scale-95"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Guardar Salón en Embudo
+                        </button>
+                      </div>
+                    </form>
+                  </section>
+
+                  {/* Tablero de Salones en el Embudo */}
+                  <section className="rounded-3xl border border-stone-200/80 bg-white p-6 shadow-sm">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-base font-extrabold text-slate-900">
+                          Salones en Proceso ({leads.filter((l) => l.status !== 'paying').length})
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Toca el botón de WhatsApp para dispararle el mensaje con un solo clic.
+                        </p>
+                      </div>
+
+                      {/* Filtros rápidos de visualización */}
+                      <div className="inline-flex rounded-xl border border-stone-200 bg-[#FAF8F5] p-0.5 text-[11px] font-semibold">
+                        {(
+                          [
+                            { id: 'all', label: 'Todos' },
+                            { id: 'frio', label: 'Google Maps' },
+                            { id: 'reactivar', label: 'Por Reactivar' },
+                            { id: 'calientes', label: 'TikTok DMs' },
+                          ] as const
+                        ).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setLeadFilterType(tab.id)}
+                            className={`rounded-lg px-3 py-1 transition ${
+                              leadFilterType === tab.id
+                                ? 'bg-white text-orange-600 shadow-xs'
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {leads.filter((l) => l.status !== 'paying').length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-stone-200 bg-[#FAF8F5] p-8 text-center">
+                          <p className="text-sm font-bold text-slate-700">Tu embudo está vacío.</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            Aprovecha la hora de prospección: busca 15 salones en Google Maps y agrégalos aquí arriba.
+                          </p>
+                        </div>
+                      ) : (
+                        leads
+                          .filter((l) => l.status !== 'paying')
+                          .filter((lead) => {
+                            if (leadFilterType === 'frio') return lead.notes?.includes('Google Maps');
+                            if (leadFilterType === 'reactivar') return lead.notes?.includes('Inactivo');
+                            if (leadFilterType === 'calientes') return lead.notes?.includes('TikTok DM');
+                            return true;
+                          })
+                          .map((lead) => {
+                            const isMaps = lead.notes?.includes('Google Maps');
+                            const isReactivar = lead.notes?.includes('Inactivo');
+                            const defaultMsg = isReactivar
+                              ? `¡Hola ${lead.owner_name || ''}! Te escribí hace un tiempo por el sistema para ${lead.salon_name}. Como andamos compartiendo tips en TikTok sobre cómo captar más clientas (ya somos más de 6,500 salones y estilistas), te quería preguntar si lograste armar tu vitrina digital o si te armo una demo de regalo de 2 minutos para WhatsApp: https://tiktok.com/@martin.koratflow`
+                              : `¡Hola! Vi el salón ${lead.salon_name} en Google Maps y me encantaron sus trabajos. Quería hacerles una consulta rápida: ¿tienen catálogo interactivo para mandar por WhatsApp cuando una clienta nueva pregunta precios, o lo mandan en fotos sueltas?`;
+
+                            return (
+                              <div
+                                key={lead.id}
+                                className="group flex flex-col justify-between gap-3 rounded-2xl border border-stone-100 bg-[#FAF8F5]/80 p-4 transition hover:border-orange-200 hover:bg-white sm:flex-row sm:items-center"
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-sm font-extrabold text-slate-900">
+                                      {lead.salon_name}
+                                    </h4>
+                                    {lead.notes && (
+                                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                                        {lead.notes}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-slate-500">
+                                    {lead.owner_name ? `Contacto: ${lead.owner_name} · ` : ''}
+                                    {lead.whatsapp ? `WA: +51 ${lead.whatsapp}` : 'Sin número asignado'}
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {lead.whatsapp ? (
+                                    <a
+                                      href={`https://wa.me/51${lead.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(defaultMsg)}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 active:scale-95"
+                                    >
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                      Abrir Chat WA
+                                    </a>
+                                  ) : (
+                                    <span className="text-[11px] text-slate-400 italic">Agrega teléfono</span>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => markLeadPaying(lead)}
+                                    className="rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-orange-600 active:scale-95"
+                                    title="Pasar a cliente pagando mensual"
+                                  >
+                                    ✓ Cerrar S/ 150
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteLead(lead.id)}
+                                    className="rounded-xl p-2 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                                    title="Eliminar del embudo"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                      )}
+                    </div>
+                  </section>
+                </div>
+              ) : saasSubTab === 'producto' ? (
                 <div className="space-y-5">
                   <section className="rounded-3xl border border-stone-200/80 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -1896,15 +2443,21 @@ export default function KoratCockpit() {
                 </form>
               )}
 
-              {/* Filtros por Estado */}
+              {/* Filtros por Estado (Por defecto: En Cola, oculta Publicados) */}
               <div className="mb-4 flex flex-wrap gap-1.5">
                 {(
                   [
-                    { id: 'all', label: 'Todos' },
+                    {
+                      id: 'pendientes',
+                      label: `En Cola (${scripts.filter((s) => s.status !== 'publicado').length})`,
+                    },
                     { id: 'sin_grabar', label: 'Sin grabar' },
                     { id: 'grabado', label: 'Grabado' },
                     { id: 'editado', label: 'Editado' },
-                    { id: 'publicado', label: 'Publicado' },
+                    {
+                      id: 'publicado',
+                      label: `Publicados (${scripts.filter((s) => s.status === 'publicado').length})`,
+                    },
                   ] as const
                 ).map((st) => (
                   <button
@@ -1923,14 +2476,21 @@ export default function KoratCockpit() {
               </div>
 
               <div className="space-y-2.5">
-                {scripts.filter((s) => scriptFilter === 'all' || s.status === scriptFilter).length ===
-                0 ? (
+                {scripts.filter((s) =>
+                  scriptFilter === 'pendientes'
+                    ? s.status !== 'publicado'
+                    : s.status === scriptFilter
+                ).length === 0 ? (
                   <p className="rounded-2xl bg-[#FAF8F5] p-5 text-center text-xs text-slate-500">
-                    No hay guiones en este estado. Haz clic en &quot;Nuevo Guion&quot; para crear uno.
+                    No hay guiones en esta vista. Haz clic en &quot;Nuevo Guion&quot; para crear uno.
                   </p>
                 ) : (
                   scripts
-                    .filter((s) => scriptFilter === 'all' || s.status === scriptFilter)
+                    .filter((s) =>
+                      scriptFilter === 'pendientes'
+                        ? s.status !== 'publicado'
+                        : s.status === scriptFilter
+                    )
                     .map((sc) => {
                       const isExpanded = expandedScriptId === sc.id;
                       const statusColors: Record<string, string> = {
@@ -1973,35 +2533,160 @@ export default function KoratCockpit() {
                               </p>
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => advanceScriptStatus(sc)}
-                              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition hover:opacity-80 ${
-                                statusColors[sc.status] || statusColors.sin_grabar
-                              }`}
-                            >
-                              {statusLabels[sc.status] || sc.status}
-                              <ArrowUpRight className="h-3 w-3" />
-                            </button>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setReadingScript(sc)}
+                                className="inline-flex items-center gap-1 rounded-xl bg-sky-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-xs transition hover:bg-sky-600"
+                                title="Modo Lectura para Grabar"
+                              >
+                                <Maximize2 className="h-3 w-3" />
+                                Leer
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => advanceScriptStatus(sc)}
+                                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition hover:opacity-80 ${
+                                  statusColors[sc.status] || statusColors.sin_grabar
+                                }`}
+                              >
+                                {statusLabels[sc.status] || sc.status}
+                                <ArrowUpRight className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingScript(sc)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-sky-600"
+                                title="Editar guion"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteScript(sc.id)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-rose-600"
+                                title="Eliminar guion"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
 
-                          {isExpanded && (
+                          {editingScript?.id === sc.id && (
+                            <form
+                              onSubmit={saveEditingScript}
+                              className="mt-3 space-y-2.5 rounded-2xl border border-sky-200 bg-sky-50/50 p-3.5"
+                            >
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                <input
+                                  type="text"
+                                  required
+                                  value={editingScript.title}
+                                  onChange={(e) =>
+                                    setEditingScript({ ...editingScript, title: e.target.value })
+                                  }
+                                  className="sm:col-span-2 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold"
+                                />
+                                <select
+                                  value={editingScript.platform}
+                                  onChange={(e) =>
+                                    setEditingScript({
+                                      ...editingScript,
+                                      platform: e.target.value as KoratScript['platform'],
+                                    })
+                                  }
+                                  className="rounded-xl border border-stone-200 bg-white px-2 py-1.5 text-xs font-bold"
+                                >
+                                  <option value="tiktok">TikTok</option>
+                                  <option value="instagram">IG Reels</option>
+                                  <option value="facebook">FB Reels</option>
+                                  <option value="youtube">YT Shorts</option>
+                                </select>
+                              </div>
+                              <input
+                                type="text"
+                                value={editingScript.hook || ''}
+                                onChange={(e) =>
+                                  setEditingScript({ ...editingScript, hook: e.target.value })
+                                }
+                                placeholder="Ganchos / Texto en video..."
+                                className="w-full rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs"
+                              />
+                              <textarea
+                                rows={5}
+                                value={editingScript.body || ''}
+                                onChange={(e) =>
+                                  setEditingScript({ ...editingScript, body: e.target.value })
+                                }
+                                placeholder="Guion completo..."
+                                className="w-full rounded-xl border border-stone-200 bg-white p-2.5 text-xs leading-relaxed"
+                              />
+                              <textarea
+                                rows={2}
+                                value={editingScript.copy_description || ''}
+                                onChange={(e) =>
+                                  setEditingScript({
+                                    ...editingScript,
+                                    copy_description: e.target.value,
+                                  })
+                                }
+                                placeholder="Copy descripción..."
+                                className="w-full rounded-xl border border-stone-200 bg-white p-2.5 text-xs"
+                              />
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingScript(null)}
+                                  className="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-white"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="submit"
+                                  className="rounded-xl bg-sky-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-sky-600"
+                                >
+                                  Guardar Cambios
+                                </button>
+                              </div>
+                            </form>
+                          )}
+
+                          {isExpanded && editingScript?.id !== sc.id && (
                             <div className="mt-3 space-y-2.5 border-t border-stone-200/80 pt-3 text-xs text-slate-700">
                               {sc.hook && (
-                                <div className="rounded-xl bg-white p-2.5 border border-stone-100">
-                                  <span className="font-bold text-teal-700">Ganchos / Texto en video: </span>
+                                <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3 text-sm font-semibold text-teal-900">
+                                  <span className="text-xs font-bold uppercase text-teal-600 block mb-0.5">
+                                    Gancho / Texto en video
+                                  </span>
                                   {sc.hook}
                                 </div>
                               )}
                               {sc.body && (
-                                <div className="rounded-xl bg-white p-2.5 border border-stone-100 whitespace-pre-wrap">
-                                  <p className="font-bold text-slate-800 mb-1">Guion:</p>
+                                <div className="rounded-xl border border-stone-200/70 bg-white p-4 text-[15px] leading-relaxed text-slate-800 whitespace-pre-wrap">
+                                  <p className="text-xs font-bold uppercase text-slate-400 mb-2">Guion</p>
                                   {sc.body}
                                 </div>
                               )}
                               {sc.copy_description && (
-                                <div className="rounded-xl bg-white p-2.5 border border-stone-100 whitespace-pre-wrap">
-                                  <p className="font-bold text-slate-800 mb-1">Copy descripción:</p>
+                                <div className="rounded-xl border border-stone-100 bg-white p-3 whitespace-pre-wrap">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <p className="font-bold text-slate-800">Copy descripción:</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => copyText(sc.copy_description!, sc.id)}
+                                      className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-stone-200"
+                                    >
+                                      {copiedId === sc.id ? (
+                                        <>
+                                          <Check className="h-3 w-3 text-emerald-600" /> Copiado
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" /> Copiar
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
                                   {sc.copy_description}
                                 </div>
                               )}
@@ -2221,6 +2906,84 @@ export default function KoratCockpit() {
           </div>
         </aside>
       </div>
+
+      {/* Modal Modo Lectura / Teleprompter para Grabar */}
+      {readingScript && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-stone-200 bg-[#FAF8F5] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-200/80 bg-white px-6 py-4 rounded-t-3xl">
+              <div>
+                <span className="rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-bold uppercase text-teal-800">
+                  Modo Grabación · {readingScript.platform}
+                </span>
+                <h3 className="mt-1 text-lg font-extrabold text-slate-900">
+                  {readingScript.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReadingScript(null)}
+                className="rounded-full p-2 text-slate-400 hover:bg-stone-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-5 overflow-y-auto p-6">
+              {readingScript.hook && (
+                <div className="rounded-2xl border border-teal-200 bg-teal-50 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-teal-700">
+                    Gancho / Texto en pantalla
+                  </p>
+                  <p className="mt-1 text-lg font-extrabold text-teal-950">
+                    {readingScript.hook}
+                  </p>
+                </div>
+              )}
+
+              {readingScript.copy_description && (
+                <div className="rounded-2xl border border-amber-200/80 bg-amber-50/70 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                    Detalles de Grabación & Psicología
+                  </p>
+                  <p className="mt-1.5 whitespace-pre-wrap text-xs font-medium leading-relaxed text-amber-950">
+                    {readingScript.copy_description}
+                  </p>
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-stone-200/80 bg-white p-6 shadow-xs">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  Guion Completo
+                </p>
+                <p className="whitespace-pre-wrap text-lg font-medium leading-loose text-slate-900 sm:text-xl">
+                  {readingScript.body || 'Sin texto de guion todavía.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-stone-200/80 bg-white px-6 py-4 rounded-b-3xl">
+              <button
+                type="button"
+                onClick={() => {
+                  advanceScriptStatus(readingScript);
+                  setReadingScript(null);
+                }}
+                className="rounded-2xl bg-emerald-500 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-emerald-600"
+              >
+                ✓ Marcar siguiente estado
+              </button>
+              <button
+                type="button"
+                onClick={() => setReadingScript(null)}
+                className="rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-stone-100"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-stone-200 bg-white/95 py-2 backdrop-blur-md lg:hidden">

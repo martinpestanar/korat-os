@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nilah & Club Glow — Presentación Ejecutiva Light</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #FAF8F5;
+      color: #0F172A;
+    }
+    .gradient-glow {
+      background: linear-gradient(135deg, #7C3AED 0%, #D946EF 100%);
+    }
+    .text-gradient {
+      background: linear-gradient(135deg, #7C3AED 0%, #DB2777 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .light-card {
+      background: #FFFFFF;
+      border: 1px solid #E7E5E4;
+      box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.05);
+    }
+    /* Simulación realista de WhatsApp */
+    .wa-bg {
+      background-color: #EFEAE2;
+      background-image: radial-gradient(#D5CFC7 0.75px, transparent 0.75px);
+      background-size: 14px 14px;
+    }
+    .wa-bubble-in {
+      background: #FFFFFF;
+      border-radius: 0px 14px 14px 14px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .wa-bubble-out {
+      background: #D9FDD3;
+      border-radius: 14px 0px 14px 14px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+      }
+      body {
+        background-color: #FAF8F5 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+      .no-print { display: none !important; }
+      section { 
+        break-inside: avoid !important; 
+        page-break-inside: avoid !important;
+        margin-bottom: 16px !important; 
+        padding: 24px !important;
+      }
+      .chat-card {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .page-break {
+        page-break-before: always !important;
+        break-before: page !important;
+      }
+      /* Forzar color visible en impresión para textos con gradiente */
+      .text-gradient {
+        background: none !important;
+        -webkit-text-fill-color: #7C3AED !important;
+        color: #7C3AED !important;
+      }
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
+
+  <!-- BARRA FLOTANTE SOLO PANTALLA -->
+  <div class="no-print sticky top-4 z-50 flex items-center justify-between bg-white/95 backdrop-blur-md rounded-2xl px-5 py-3 border border-violet-200 shadow-lg">
+    <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      Presentación Light · Lista para Llamada o PDF
+    </div>
+    <button onclick="window.print()" class="gradient-glow px-4 py-2 rounded-xl text-xs font-extrabold text-white shadow-md hover:opacity-90 transition cursor-pointer">
+      📄 Guardar como PDF
+    </button>
+  </div>
+
+  <!-- SLIDE 1: PORTADA -->
+  <section class="light-card rounded-3xl p-8 md:p-12 text-center relative overflow-hidden">
+    <div class="absolute -top-24 -left-24 w-72 h-72 bg-violet-200/40 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-pink-200/40 rounded-full blur-3xl pointer-events-none"></div>
+
+    <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-bold uppercase tracking-wider mb-5">
+      ✨ Guía Estratégica & Demostración en Vivo
+    </span>
+    <h1 class="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight mb-4">
+      Haz que tus clientas <span class="text-gradient">vuelvan solas</span> y blinda tu reputación
+    </h1>
+    <p class="text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+      El Sistema de Fidelización Digital VIP por WhatsApp diseñado exclusivamente para salones de belleza, spas y cadenas de estética.
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto text-left text-xs font-semibold text-slate-700">
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
+        💳 <b class="text-slate-900">Cero cartones:</b> Tarjeta interactiva directo en WhatsApp.
+      </div>
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
+        🛡️ <b class="text-slate-900">Escudo 1 al 5 ⭐:</b> Ataja quejas en privado antes de redes.
+      </div>
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
+        🎂 <b class="text-slate-900">Cumpleaños 2T:</b> Regalo 7 días antes para llenar la semana.
+      </div>
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
+        📊 <b class="text-slate-900">Multi-Sede:</b> Ranking de estilistas y control por local.
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 2: ANTES VS DESPUÉS -->
+  <section class="light-card rounded-3xl p-8 md:p-10 space-y-6">
+    <div class="border-b border-stone-200 pb-4">
+      <span class="text-xs font-bold uppercase tracking-wider text-rose-600">El Diagnóstico Real</span>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mt-1">Por qué los salones pierden clientas cada mes</h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="p-6 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3">
+        <h3 class="text-rose-800 font-bold text-lg">🥀 El Método Tradicional (Cartón y Silencio)</h3>
+        <ul class="space-y-2.5 text-sm text-slate-700">
+          <li class="flex items-start gap-2">
+            <span class="text-rose-600 font-bold">✕</span>
+            <span><b>El 73% pierde la tarjeta de cartón:</b> Se queda en otra cartera o lavadora; la clienta se frustra y no vuelve.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-rose-600 font-bold">✕</span>
+            <span><b>El cliente silencioso:</b> Si algo no le gustó, sonríe en el espejo por pena, paga y nunca más regresa.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-rose-600 font-bold">✕</span>
+            <span><b>Premios que quiebran el margen:</b> Prometen "el servicio 10 gratis" regalando trabajos de $60-$80 USD.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-3">
+        <h3 class="text-emerald-800 font-bold text-lg">💎 La Solución con Nilah & Club Glow</h3>
+        <ul class="space-y-2.5 text-sm text-slate-700">
+          <li class="flex items-start gap-2">
+            <span class="text-emerald-600 font-bold">✓</span>
+            <span><b>Billetera VIP en WhatsApp:</b> Tarjeta digital con tu logo sin descargar apps ni contraseñas.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-emerald-600 font-bold">✓</span>
+            <span><b>Escudo en caliente:</b> La encuesta 30 min después permite apagar quejas en privado antes de redes.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-emerald-600 font-bold">✓</span>
+            <span><b>Control matemático (Wizard Glow):</b> Premios en hitos 4, 8 y 12 con insumos de $2-$3 USD que para ella valen $20.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: EXPERIENCIA REAL EN WHATSAPP (CHATS VISUALES) -->
+  <section class="light-card rounded-3xl p-6 md:p-10 space-y-5 page-break">
+    <div class="border-b border-stone-200 pb-3">
+      <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Experiencia Real de Tu Clienta</span>
+      <h2 class="text-xl md:text-3xl font-extrabold text-slate-900 mt-0.5">Así se ven los mensajes automáticos en su WhatsApp</h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <!-- CHAT 1: CALIFICACIÓN + SELLOS -->
+      <div class="chat-card rounded-2xl overflow-hidden border border-stone-300 shadow-sm flex flex-col">
+        <div class="bg-[#008069] text-white px-3.5 py-2 flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">💅</div>
+          <div>
+            <p class="text-xs font-bold leading-tight">Tu Salón VIP</p>
+            <p class="text-[9px] text-emerald-100">en línea</p>
+          </div>
+        </div>
+        <div class="wa-bg p-3 space-y-2.5 flex-1 text-[11px] leading-relaxed text-slate-800">
+          <div class="wa-bubble-in p-2.5 max-w-[90%]">
+            <p>🌸 Qué alegría haberte tenido con nosotras.</p>
+            <p class="mt-1">Una preguntita rápida... del 1 al 5, ¿cómo te sentiste con la atención? (Responde solo con el número porfa) 👇</p>
+            <span class="block text-right text-[8px] text-slate-400 mt-0.5">4:30 PM</span>
+          </div>
+
+          <div class="wa-bubble-out p-2 ml-auto w-fit px-3 font-bold text-slate-900">
+            5
+            <span class="text-[8px] text-slate-500 ml-1.5 font-normal">4:32 PM ✓✓</span>
+          </div>
+
+          <div class="wa-bubble-in p-2.5 max-w-[92%]">
+            <p>¡Qué felicidad leerte, mil gracias por tu nota! 💖</p>
+            <p class="mt-1">¡Ojo con esto! Con el sellito de hoy llegaste a <b>3 de 12</b>... ¡y estás a <b>solo 1 visita</b> de desbloquear tu primer regalo: <b>Bono Consentida: $10 USD en tu cuenta</b>! 🎁🎉</p>
+            <p class="mt-1">En tu próxima cita te llevas tu premio 🌸</p>
+            <p class="mt-1 text-sky-600 underline font-medium break-all">📲 Revisa tu tarjeta casi lista:<br>https://koratflow.agency/club/tu-salon</p>
+            <span class="block text-right text-[8px] text-slate-400 mt-0.5">4:32 PM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT 2: ESCUDO CONTROL DE DAÑOS (CALIFICACIÓN 3) -->
+      <div class="chat-card rounded-2xl overflow-hidden border border-rose-300 shadow-sm flex flex-col">
+        <div class="bg-[#008069] text-white px-3.5 py-2 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">🛡️</div>
+            <div>
+              <p class="text-xs font-bold leading-tight">Escudo Control de Daños</p>
+              <p class="text-[9px] text-emerald-100">si califica 1, 2 o 3 ⭐</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-rose-500 text-[8px] font-black uppercase text-white">Alerta Privada</span>
+        </div>
+        <div class="wa-bg p-3 space-y-2.5 flex-1 text-[11px] leading-relaxed text-slate-800">
+          <div class="wa-bubble-out p-2 ml-auto w-fit px-3 font-bold text-slate-900">
+            3
+            <span class="text-[8px] text-slate-500 ml-1.5 font-normal">4:32 PM ✓✓</span>
+          </div>
+
+          <div class="wa-bubble-in p-2.5 max-w-[92%] border-l-4 border-rose-500">
+            <p>Qué pena leer esto 🥺 no es la experiencia que queremos darte.</p>
+            <p class="mt-1">Para nosotras tu comodidad es prioridad. ¿Podrías darme un poquito más de detalle sobre lo que pasó para revisarlo juntas?</p>
+            <p class="mt-1">Quedo súper pendiente de tu mensaje 💕</p>
+            <span class="block text-right text-[8px] text-slate-400 mt-0.5">4:32 PM</span>
+          </div>
+
+          <div class="bg-rose-50 border border-rose-200 rounded-xl p-2 text-[10px] text-rose-900 font-semibold">
+            🔒 Se pausan los envíos por 24h y recibes alerta en privado para llamarla antes de que vaya a redes.
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT 3: CUMPLEAÑOS VIP EN 2 TIEMPOS -->
+      <div class="chat-card rounded-2xl overflow-hidden border border-stone-300 shadow-sm flex flex-col">
+        <div class="bg-[#008069] text-white px-3.5 py-2 flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">🎂</div>
+          <div>
+            <p class="text-xs font-bold leading-tight">Cumpleaños VIP (2 Tiempos)</p>
+            <p class="text-[9px] text-emerald-100">automatizado</p>
+          </div>
+        </div>
+        <div class="wa-bg p-3 space-y-2.5 flex-1 text-[11px] leading-relaxed text-slate-800">
+          <div class="text-center">
+            <span class="bg-white/90 px-2 py-0.5 rounded-full text-[9px] font-bold text-slate-600 shadow-xs">Tiempo 1 · 7 Días Antes</span>
+          </div>
+          <div class="wa-bubble-in p-2.5 max-w-[92%]">
+            <p>¡Hola Sofía! 🌸🎂</p>
+            <p class="mt-1">En nuestro salón ya estamos celebrando porque se acerca tu cumpleaños ✨</p>
+            <p class="mt-1">🎁 <b>Tu regalo anticipado:</b><br>¡Te regalamos <b>+1 Sello VIP</b> a tu tarjeta! Ahora tienes 3 de 12 sellos.</p>
+            <p class="mt-1">🎯 Estás a <b>solo 1 sellito</b> de desbloquear tu regalo: <b>Bono Consentida</b> 💕</p>
+            <p class="mt-1">¿Qué día de esta semana te gustaría agendar? 🗓️</p>
+            <span class="block text-right text-[8px] text-slate-400 mt-0.5">10:00 AM</span>
+          </div>
+
+          <div class="text-center pt-0.5">
+            <span class="bg-white/90 px-2 py-0.5 rounded-full text-[9px] font-bold text-slate-600 shadow-xs">Tiempo 2 · El Día Exacto</span>
+          </div>
+          <div class="wa-bubble-in p-2.5 max-w-[92%]">
+            <p>¡Feliz cumpleaños, Sofía! 🥳🎂🎉✨</p>
+            <p class="mt-1">De parte de todo el equipo, te deseamos un día maravilloso lleno de amor. 💕 ¡Que todos tus deseos se cumplan! 🥂💖</p>
+            <span class="block text-right text-[8px] text-slate-400 mt-0.5">9:00 AM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT 4: CUMPLEAÑOS SI YA ESTABA A 1 SELLO -->
+      <div class="chat-card rounded-2xl overflow-hidden border border-amber-300 shadow-sm flex flex-col">
+        <div class="bg-[#008069] text-white px-3.5 py-2 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">🎁</div>
+            <div>
+              <p class="text-xs font-bold leading-tight">Cumpleaños (Premio Directo)</p>
+              <p class="text-[9px] text-emerald-100">si ya estaba a 1 sello</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-amber-400 text-slate-900 text-[8px] font-black uppercase">Desbloqueado</span>
+        </div>
+        <div class="wa-bg p-3 space-y-2.5 flex-1 text-[11px] leading-relaxed text-slate-800">
+          <div class="wa-bubble-in p-2.5 max-w-[92%] border-l-4 border-amber-400">
+            <p>¡Sorpresa de cumpleaños, Sofía! 🎁🎂👑</p>
+            <p class="mt-1">En nuestro salón te regalamos tu <b>sello final</b> y acabas de desbloquear tu regalo:</p>
+            <p class="mt-1 font-bold text-violet-700">🎉 Bono Consentida: $10 USD en tu cuenta ✨</p>
+            <p class="mt-1">Ven a consentirte esta semana y pídelo directo en recepción con tu servicio favorito. 🌸</p>
+            <p class="mt-1 text-sky-600 underline font-medium break-all">📲 Ver tu regalo en tu tarjeta digital:<br>https://koratflow.agency/club/tu-salon</p>
+            <span class="block text-right text-[8px] text-slate-400 mt-0.5">10:00 AM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: CONTROL MULTI-SEDE Y BLINDAJE -->
+  <section class="light-card rounded-3xl p-8 md:p-10 space-y-6 page-break">
+    <div class="border-b border-stone-200 pb-4">
+      <span class="text-xs font-bold uppercase tracking-wider text-violet-600">Especial Cadenas & Control Total</span>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mt-1">Controla la calidad de todas tus sedes en 1 panel</h2>
+    </div>
+
+    <div class="grid sm:grid-cols-3 gap-5 text-center">
+      <div class="p-6 rounded-2xl bg-gradient-to-br from-violet-50 to-white border border-violet-200/80 shadow-md shadow-violet-500/5 space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center text-2xl shadow-md shadow-violet-500/20">👩‍💼</div>
+        <h4 class="font-extrabold text-slate-900 text-sm">Ranking de Personal</h4>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Descubre con métricas reales qué estilista o manicurista recibe mejores calificaciones de tus clientas.
+        </p>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-gradient-to-br from-rose-50 to-white border border-rose-200/80 shadow-md shadow-rose-500/5 space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center text-2xl shadow-md shadow-rose-500/20">🚨</div>
+        <h4 class="font-extrabold text-slate-900 text-sm">Control de Daños 1-3 ⭐</h4>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Si una clienta califica mal, se pausan los mensajes y recibes alerta en privado para resolverlo antes de redes.
+        </p>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-200/80 shadow-md shadow-indigo-500/5 space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center text-2xl shadow-md shadow-indigo-500/20">🌙</div>
+        <h4 class="font-extrabold text-slate-900 text-sm">Escudo Nocturno</h4>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Cero molestias: nunca envía mensajes entre 10 PM y 7 AM. Si registras de noche, sale cordial al despertar.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: PLANES OFICIALES -->
+  <section class="light-card rounded-3xl p-8 md:p-10 space-y-6">
+    <div class="border-b border-stone-200 pb-4">
+      <span class="text-xs font-bold uppercase tracking-wider text-violet-600">Opciones de Implementación</span>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mt-1">Nuestros Planes Oficiales</h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="p-7 rounded-2xl bg-gradient-to-br from-white to-stone-50 border border-stone-200 shadow-lg shadow-stone-900/5 flex flex-col justify-between space-y-4">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-black text-slate-900">✨ Nilah Glow</h3>
+            <span class="px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-bold border border-violet-200">Fidelización VIP</span>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl font-black text-slate-900">$69 USD</span>
+            <span class="text-xs text-slate-500 font-semibold">/ mes (~S/ 249 PEN)</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">Ideal para salones que quieren matar el cartón, proteger su reputación y fidelizar.</p>
+          <ul class="space-y-2.5 text-xs text-slate-700 pt-3 border-t border-stone-200/80">
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">✓</span> Billetera Digital Club Glow en WhatsApp (Hitos 4, 8 y 12)</li>
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">✓</span> Escudo de Calidad Post-Cita (Filtro 1-5 ⭐ + Alerta privada)</li>
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">✓</span> Cumpleaños VIP en 2 Tiempos (7 días antes + día exacto)</li>
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">✓</span> Ranking de equipo y Escudo Nocturno</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="p-7 rounded-2xl bg-gradient-to-br from-violet-50 via-white to-fuchsia-50/70 border-2 border-violet-500 flex flex-col justify-between space-y-4 relative shadow-xl shadow-violet-500/15">
+        <span class="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full gradient-glow text-[10px] font-black uppercase tracking-wider text-white shadow-lg">
+          Más Elegido · 360°
+        </span>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-black text-slate-900">🚀 Nilah Pro</h3>
+            <span class="px-3 py-1 rounded-full bg-fuchsia-100 text-fuchsia-700 text-xs font-bold border border-fuchsia-200">Agenda Llena</span>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl font-black text-gradient">$109 USD</span>
+            <span class="text-xs text-slate-500 font-semibold">/ mes (~S/ 390 PEN)</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">Todo Nilah Glow + automatización total para eliminar plantones y llenar citas.</p>
+          <ul class="space-y-2.5 text-xs text-slate-700 pt-3 border-t border-violet-200/80">
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-[10px] font-bold">✓</span> <b>Todo lo incluido en Nilah Glow</b></li>
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-[10px] font-bold">✓</span> Recordatorios Anti No-Show (24h y 3h antes con ubicación)</li>
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-[10px] font-bold">✓</span> Guía de Cuidados Post-Cita en 2 tiempos (24h y día 7-10)</li>
+            <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-[10px] font-bold">✓</span> Radar de Retoques (día 20 y rescate día 35-40) + Festivos</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p class="text-center text-xs text-slate-500 italic">
+      * Para cadenas con múltiples sedes armamos paquetes corporativos a medida según número de locales.
+    </p>
+  </section>
+
+  <!-- SLIDE 6: RETORNO DE INVERSIÓN -->
+  <section class="gradient-glow rounded-3xl p-8 md:p-10 text-white space-y-6 shadow-xl">
+    <div class="text-center max-w-2xl mx-auto space-y-2">
+      <h2 class="text-2xl md:text-3xl font-black">La matemática del retorno en tu salón</h2>
+      <p class="text-white/90 text-sm">
+        No es un gasto de software; es una máquina de recuperar citas que hoy se pierden.
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-3 gap-4 text-slate-900">
+      <div class="bg-white rounded-2xl p-5 text-center shadow">
+        <p class="text-xs font-bold uppercase text-slate-400">1 Clienta Salvada</p>
+        <p class="text-2xl font-black text-violet-600 mt-1">~$450 USD</p>
+        <p class="text-xs text-slate-500 mt-1">Valor anual de una clienta que vuelve cada mes a tu salón.</p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 text-center shadow">
+        <p class="text-xs font-bold uppercase text-slate-400">Inversión Nilah</p>
+        <p class="text-2xl font-black text-slate-900 mt-1">$69 - $109 USD</p>
+        <p class="text-xs text-slate-500 mt-1">Suscripción mensual fija por sede (o paquete cadena).</p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 text-center shadow border-2 border-emerald-400">
+        <p class="text-xs font-bold uppercase text-emerald-600">Retorno Neto</p>
+        <p class="text-2xl font-black text-emerald-600 mt-1">4X a 6X</p>
+        <p class="text-xs text-slate-500 mt-1">Con solo 2 citas rescatadas al mes el sistema se paga solo.</p>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

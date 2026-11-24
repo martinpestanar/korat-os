@@ -45,6 +45,7 @@ import {
   KoratNilahItem,
   TaskCategory,
 } from '@/lib/supabase';
+import { RachasModule } from '@/components/RachasModule';
 
 type NavTab = 'hoy' | 'saas' | 'contenido' | 'finanzas' | 'rachas';
 
@@ -113,6 +114,33 @@ const CATEGORY_STYLES: Record<
 
 export default function KoratCockpit() {
   const [activeTab, setActiveTab] = useState<NavTab>('hoy');
+
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') as NavTab | null;
+      if (tab && NAV_ITEMS.some((item) => item.id === tab)) {
+        setActiveTab(tab);
+      } else {
+        setActiveTab('hoy');
+      }
+    };
+
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
+  }, []);
+
+  const navigateTab = (tab: NavTab) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    if (tab === 'hoy') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', tab);
+    }
+    window.history.pushState(null, '', url.toString());
+  };
   const [cockpit, setCockpit] = useState<CockpitMetrics>({
     balance: 250,
     mrr: 150,
@@ -190,6 +218,55 @@ export default function KoratCockpit() {
   const [finType, setFinType] = useState<'income' | 'expense'>('income');
   const [finAmount, setFinAmount] = useState('');
   const [finCategory, setFinCategory] = useState('');
+  const [finNote, setFinNote] = useState('');
+  const [finDate, setFinDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [finFilter, setFinFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [finSearch, setFinSearch] = useState('');
+  const [editingFinanceId, setEditingFinanceId] = useState<string | null>(null);
+  const [editFinType, setEditFinType] = useState<'income' | 'expense'>('income');
+  const [editFinAmount, setEditFinAmount] = useState('');
+  const [editFinCategory, setEditFinCategory] = useState('');
+  const [editFinNote, setEditFinNote] = useState('');
+  const [editFinDate, setEditFinDate] = useState('');
+  const [finCheckins, setFinCheckins] = useState<string[]>([]);
+  const [showYapeAdjust, setShowYapeAdjust] = useState(false);
+  const [yapeBalanceInput, setYapeBalanceInput] = useState('');
+  const [finSubTab, setFinSubTab] = useState<'resumen' | 'proyectos' | 'registrar' | 'movimientos'>('resumen');
+  const [showFixedDetails, setShowFixedDetails] = useState(false);
+  const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
+  const [finProjects, setFinProjects] = useState<
+    { id: string; title: string; amount: number; expectedDate: string; status: 'pending' | 'collected' }[]
+  >([]);
+  const [projTitle, setProjTitle] = useState('');
+  const [projAmount, setProjAmount] = useState('');
+  const [projDate, setProjDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [finGoal, setFinGoal] = useState<{ title: string; target: number; days: 15 | 30 | 90 }>({
+    title: 'Meta 30 días · Estabilidad',
+    target: 500,
+    days: 30,
+  });
+  const [editingGoal, setEditingGoal] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('korat_fin_checkins');
+      if (saved) setFinCheckins(JSON.parse(saved));
+      const savedProj = localStorage.getItem('korat_fin_projects');
+      if (savedProj) {
+        setFinProjects(JSON.parse(savedProj));
+      } else {
+        const defaults = [
+          { id: 'p1', title: 'Trabajo edición (mañana)', amount: 40, expectedDate: finTodayISO, status: 'pending' as const },
+          { id: 'p2', title: 'Pago Página FB (25 Dic)', amount: 375, expectedDate: '2026-12-25', status: 'pending' as const },
+        ];
+        setFinProjects(defaults);
+      }
+      const savedGoal = localStorage.getItem('korat_fin_goal');
+      if (savedGoal) setFinGoal(JSON.parse(savedGoal));
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
   const [todayStr, setTodayStr] = useState('');
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [editWhatsapp, setEditWhatsapp] = useState('');
@@ -575,15 +652,50 @@ export default function KoratCockpit() {
   async function addFinanceMovement(e: React.FormEvent) {
     e.preventDefault();
     const amountNum = parseFloat(finAmount);
-    if (!amountNum || !finCategory.trim()) return;
-    await supabase.rpc('add_finance_movement', {
-      p_type: finType,
-      p_amount: amountNum,
-      p_category: finCategory.trim(),
-      p_note: finType === 'income' ? 'Ingreso manual' : 'Gasto manual',
+    if (!amountNum || amountNum <= 0 || !finCategory.trim()) return;
+    await supabase.from('korat_finances').insert({
+      type: finType,
+      amount: amountNum,
+      currency: 'PEN',
+      category: finCategory.trim(),
+      note: finNote.trim() || (finType === 'income' ? 'Ingreso manual' : 'Gasto manual'),
+      date: finDate || new Date().toISOString().split('T')[0],
     });
     setFinAmount('');
     setFinCategory('');
+    setFinNote('');
+    loadAllData();
+  }
+
+  function startEditFinance(f: KoratFinance) {
+    setEditingFinanceId(f.id);
+    setEditFinType(f.type === 'expense' ? 'expense' : 'income');
+    setEditFinAmount(String(f.amount));
+    setEditFinCategory(f.category);
+    setEditFinNote(f.note || '');
+    setEditFinDate(f.date ? f.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+  }
+
+  async function saveEditFinance(id: string) {
+    const amountNum = parseFloat(editFinAmount);
+    if (!amountNum || amountNum <= 0 || !editFinCategory.trim()) return;
+    await supabase
+      .from('korat_finances')
+      .update({
+        type: editFinType,
+        amount: amountNum,
+        category: editFinCategory.trim(),
+        note: editFinNote.trim() || null,
+        date: editFinDate || new Date().toISOString().split('T')[0],
+      })
+      .eq('id', id);
+    setEditingFinanceId(null);
+    loadAllData();
+  }
+
+  async function deleteFinanceMovement(id: string) {
+    setFinances(finances.filter((f) => f.id !== id));
+    await supabase.from('korat_finances').delete().eq('id', id);
     loadAllData();
   }
 
@@ -605,11 +717,159 @@ export default function KoratCockpit() {
   });
 
   const totalIncome = finances
-    .filter((f) => f.type === 'income' || f.type === 'balance_snapshot')
+    .filter((f) => f.type === 'income')
     .reduce((acc, f) => acc + Number(f.amount || 0), 0);
   const totalExpense = finances
     .filter((f) => f.type === 'expense')
     .reduce((acc, f) => acc + Number(f.amount || 0), 0);
+  const netFlow = totalIncome - totalExpense;
+
+  const filteredFinances = finances
+    .filter((f) => {
+      if (finFilter === 'income') return f.type === 'income' || f.type === 'balance_snapshot';
+      if (finFilter === 'expense') return f.type === 'expense';
+      return true;
+    })
+    .filter((f) => {
+      if (!finSearch.trim()) return true;
+      const q = finSearch.toLowerCase();
+      return (
+        f.category.toLowerCase().includes(q) ||
+        (f.note && f.note.toLowerCase().includes(q))
+      );
+    });
+
+  const expenseByCategory = finances
+    .filter((f) => f.type === 'expense')
+    .reduce<Record<string, number>>((acc, f) => {
+      acc[f.category] = (acc[f.category] || 0) + Number(f.amount || 0);
+      return acc;
+    }, {});
+
+  const topExpenseCategories = Object.entries(expenseByCategory)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+
+  const finTodayISO = new Date().toISOString().split('T')[0];
+  const finYesterdayDate = new Date();
+  finYesterdayDate.setDate(finYesterdayDate.getDate() - 1);
+  const finYesterdayISO = finYesterdayDate.toISOString().split('T')[0];
+
+  const isFinDateUpdated = (iso: string) =>
+    finCheckins.includes(iso) || finances.some((f) => f.date && f.date.startsWith(iso));
+
+  const updatedToday = isFinDateUpdated(finTodayISO);
+  const updatedYesterday = isFinDateUpdated(finYesterdayISO);
+
+  let finUpdateStreak = 0;
+  for (let i = 0; i < 60; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - (updatedToday ? i : i + 1));
+    const iso = d.toISOString().split('T')[0];
+    if (isFinDateUpdated(iso)) {
+      finUpdateStreak++;
+    } else {
+      break;
+    }
+  }
+
+  function markFinanceCheckedToday() {
+    if (finCheckins.includes(finTodayISO)) return;
+    const next = [...finCheckins, finTodayISO];
+    setFinCheckins(next);
+    try {
+      localStorage.setItem('korat_fin_checkins', JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+
+  // Mi Yape · Supervivencia real (Mamá 70/sem + Croquetas 65/mes + Paté 6/sem + Servicios 50/mes + Fútbol 15/sem ≈ S/ 509/mes)
+  const yapeMonthlyBurn = 509;
+  const yapeDailyBurn = yapeMonthlyBurn / 30;
+  const yapeSurvivalDays = Math.max(0, Math.round(cockpit.balance / yapeDailyBurn));
+  const yapeSurvivalWeeks = (yapeSurvivalDays / 7).toFixed(1);
+  const yapeSurvivalMonths = (yapeSurvivalDays / 30).toFixed(1);
+
+  async function updateYapeBalance(e: React.FormEvent) {
+    e.preventDefault();
+    const val = parseFloat(yapeBalanceInput);
+    if (isNaN(val) || val < 0) return;
+    const diff = val - cockpit.balance;
+    setCockpit((prev) => ({ ...prev, balance: val }));
+    if (diff !== 0) {
+      await supabase.from('korat_finances').insert({
+        type: 'balance_snapshot',
+        amount: diff,
+        currency: 'PEN',
+        category: 'Cuadre Real Yape',
+        note: `Ajuste de saldo Yape a S/ ${val.toFixed(2)}`,
+        date: finTodayISO,
+      });
+    }
+    setYapeBalanceInput('');
+    setShowYapeAdjust(false);
+    loadAllData();
+  }
+
+  const pendingProjectsTotal = finProjects
+    .filter((p) => p.status === 'pending')
+    .reduce((acc, p) => acc + p.amount, 0);
+  const projectedBalance = cockpit.balance + pendingProjectsTotal;
+  const projectedSurvivalDays = Math.max(0, Math.round(projectedBalance / yapeDailyBurn));
+
+  function saveFinProjects(next: typeof finProjects) {
+    setFinProjects(next);
+    try {
+      localStorage.setItem('korat_fin_projects', JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+
+  function addFinProject(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = parseFloat(projAmount);
+    if (!projTitle.trim() || !amt || amt <= 0) return;
+    const next = [
+      { id: crypto.randomUUID(), title: projTitle.trim(), amount: amt, expectedDate: projDate, status: 'pending' as const },
+      ...finProjects,
+    ];
+    saveFinProjects(next);
+    setProjTitle('');
+    setProjAmount('');
+  }
+
+  async function collectFinProject(proj: (typeof finProjects)[number]) {
+    saveFinProjects(finProjects.map((p) => (p.id === proj.id ? { ...p, status: 'collected' } : p)));
+    await supabase.from('korat_finances').insert({
+      type: 'income',
+      amount: proj.amount,
+      currency: 'PEN',
+      category: proj.title,
+      note: 'Cobro de proyecto / meta',
+      date: finTodayISO,
+    });
+    loadAllData();
+  }
+
+  function deleteFinProject(id: string) {
+    saveFinProjects(finProjects.filter((p) => p.id !== id));
+  }
+
+  function saveFinGoal(next: typeof finGoal) {
+    setFinGoal(next);
+    setEditingGoal(false);
+    try {
+      localStorage.setItem('korat_fin_goal', JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+
+  const goalProgressPct = finGoal.target > 0 ? Math.min(100, Math.round((totalIncome / finGoal.target) * 100)) : 0;
+  const goalRemaining = Math.max(0, finGoal.target - totalIncome);
+  const goalDailyNeeded = finGoal.days > 0 ? (goalRemaining / finGoal.days).toFixed(1) : '0';
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] pb-20 text-slate-800 lg:pb-0">
@@ -648,7 +908,7 @@ export default function KoratCockpit() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => navigateTab(item.id)}
                   className={`flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition ${
                     isActive
                       ? 'bg-sky-50 text-sky-700 shadow-xs ring-1 ring-sky-200/80'
@@ -2713,116 +2973,869 @@ export default function KoratCockpit() {
           )}
 
           {activeTab === 'finanzas' && (
-            <section className="rounded-3xl border border-stone-200/80 bg-white p-6 shadow-sm">
-              <div className="mb-4 grid grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-stone-100 bg-[#FAF8F5] p-3">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Saldo Real</p>
-                  <p className="mt-1 text-lg font-extrabold text-slate-900">S/ {cockpit.balance}</p>
-                </div>
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
-                  <p className="text-[10px] font-bold uppercase text-emerald-700">Ingresos</p>
-                  <p className="mt-1 text-lg font-extrabold text-emerald-700">+ S/ {totalIncome}</p>
-                </div>
-                <div className="rounded-2xl border border-rose-100 bg-rose-50/60 p-3">
-                  <p className="text-[10px] font-bold uppercase text-rose-700">Gastos</p>
-                  <p className="mt-1 text-lg font-extrabold text-rose-700">- S/ {totalExpense}</p>
-                </div>
-              </div>
-
-              <form onSubmit={addFinanceMovement} className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-4">
-                <select
-                  value={finType}
-                  onChange={(e) => setFinType(e.target.value as 'income' | 'expense')}
-                  className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3 py-2.5 text-sm font-medium outline-none"
-                >
-                  <option value="income">Ingreso (+)</option>
-                  <option value="expense">Gasto (-)</option>
-                </select>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={finAmount}
-                  onChange={(e) => setFinAmount(e.target.value)}
-                  placeholder="Monto S/"
-                  className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none focus:border-emerald-400 focus:bg-white"
-                />
-                <input
-                  type="text"
-                  value={finCategory}
-                  onChange={(e) => setFinCategory(e.target.value)}
-                  placeholder="Ej: Ads Cuñada, Comida Gatos..."
-                  className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-4 py-2.5 text-sm outline-none focus:border-emerald-400 focus:bg-white"
-                />
-                <button
-                  type="submit"
-                  className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600"
-                >
-                  Registrar
-                </button>
-              </form>
-
-              <div className="space-y-2.5">
-                {finances.map((f) => (
-                  <div
-                    key={f.id}
-                    className="flex items-center justify-between rounded-2xl border border-stone-100 bg-[#FAF8F5] px-4 py-3"
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">{f.category}</p>
-                      <p className="text-xs text-slate-500">{f.note}</p>
-                    </div>
-                    <span
-                      className={`text-sm font-extrabold ${
-                        f.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'
+            <div className="space-y-4">
+              {/* Sub-módulos UX Moderna */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/80 bg-white p-2 shadow-2xs">
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 'resumen', label: '📊 Resumen & Pulso' },
+                    { id: 'proyectos', label: `🎯 Proyectos (${finProjects.filter((p) => p.status === 'pending').length})` },
+                    { id: 'registrar', label: '➕ Registrar Yapeo' },
+                    { id: 'movimientos', label: `🧾 Movimientos (${finances.length})` },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setFinSubTab(tab.id as typeof finSubTab)}
+                      className={`rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+                        finSubTab === tab.id
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-stone-100 hover:text-slate-900'
                       }`}
                     >
-                      {f.type === 'expense' ? '-' : '+'} S/ {f.amount}
-                    </span>
-                  </div>
-                ))}
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </section>
+
+              {/* SUB-MÓDULO 1: RESUMEN & PULSO */}
+              {finSubTab === 'resumen' && (
+                <div className="space-y-4">
+              {/* Cierre Nocturno / Check-in Diario */}
+              <section
+                className={`flex flex-col gap-3 rounded-3xl border p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between ${
+                  updatedToday
+                    ? 'border-emerald-200/80 bg-emerald-50/70'
+                    : !updatedYesterday
+                      ? 'border-amber-300/80 bg-amber-50/80'
+                      : 'border-indigo-200/80 bg-indigo-50/60'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/80 bg-white text-xl shadow-xs">
+                    {updatedToday ? '✅' : !updatedYesterday ? '⚠️' : '🌙'}
+                  </span>
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900">
+                      {updatedToday
+                        ? 'Hoy ya actualizaste tus finanzas'
+                        : !updatedYesterday
+                          ? 'Ayer faltó actualizar tus finanzas'
+                          : 'Cierre nocturno pendiente'}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      {updatedToday
+                        ? 'Todo registrado y al día. ¡Buen cierre!'
+                        : !updatedYesterday
+                          ? 'Registra tus movimientos o marca hoy como al día para retomar el control.'
+                          : 'Antes de dormir, registra tus movimientos de hoy o marca que no hubo cambios.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2.5">
+                  <span className="flex items-center gap-1 rounded-full border border-white/80 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-800 shadow-2xs">
+                    <span>🔥</span>
+                    <span>{finUpdateStreak} {finUpdateStreak === 1 ? 'día' : 'días'} al día</span>
+                  </span>
+                  {!updatedToday && (
+                    <button
+                      type="button"
+                      onClick={markFinanceCheckedToday}
+                      className="rounded-2xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+                    >
+                      ✅ Marcar cierre de hoy
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {/* Mi Yape · Modo Supervivencia */}
+              <section className="rounded-3xl border border-purple-200/80 bg-gradient-to-br from-purple-50/80 via-white to-fuchsia-50/40 p-5 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br from-purple-100 via-fuchsia-50 to-white text-2xl shadow-md shadow-purple-500/10 ring-1 ring-purple-200/60">
+                      💜
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-extrabold text-slate-900">Mi Yape · Modo Supervivencia</h3>
+                        <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-700">
+                          100% Yape · Sin efectivo
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Con tus <span className="font-bold text-purple-700">S/ {cockpit.balance}</span> en Yape y tu gasto real (~S/ {yapeMonthlyBurn}/mes):
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-xl border border-purple-200/70 bg-white px-2.5 py-1 text-xs font-extrabold text-slate-800 shadow-2xs">
+                          🗓️ {yapeSurvivalDays} días
+                        </span>
+                        <span className="rounded-xl border border-purple-200/70 bg-white px-2.5 py-1 text-xs font-extrabold text-slate-800 shadow-2xs">
+                          📅 {yapeSurvivalWeeks} semanas
+                        </span>
+                        <span className="rounded-xl border border-purple-200/70 bg-white px-2.5 py-1 text-xs font-extrabold text-slate-800 shadow-2xs">
+                          ⏳ {yapeSurvivalMonths} meses
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setYapeBalanceInput(String(cockpit.balance));
+                        setShowYapeAdjust(!showYapeAdjust);
+                      }}
+                      className="rounded-2xl border border-purple-200 bg-white px-3.5 py-2 text-xs font-bold text-purple-700 shadow-2xs transition hover:bg-purple-50"
+                    >
+                      💜 Actualizar Saldo Yape
+                    </button>
+                    {showYapeAdjust && (
+                      <form onSubmit={updateYapeBalance} className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={yapeBalanceInput}
+                          onChange={(e) => setYapeBalanceInput(e.target.value)}
+                          placeholder="Saldo real S/"
+                          className="w-28 rounded-xl border border-purple-300 bg-white px-2.5 py-1.5 text-xs font-bold outline-none focus:border-purple-500"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-purple-700"
+                        >
+                          Guardar
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+
+                {/* Proyección Inteligente + Acordeón de Gastos Fijos */}
+                <div className="mt-4 space-y-2.5 border-t border-purple-100/80 pt-3">
+                  {pendingProjectsTotal > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-2 text-xs">
+                      <span className="font-semibold text-emerald-900">
+                        🔮 Proyección inteligente: con tus{' '}
+                        <span className="font-extrabold">+ S/ {pendingProjectsTotal}</span> por cobrar, subirías a{' '}
+                        <span className="font-extrabold">S/ {projectedBalance.toFixed(0)}</span> ({projectedSurvivalDays} días de oxígeno).
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFinSubTab('proyectos')}
+                        className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-700"
+                      >
+                        Ver proyectos →
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowFixedDetails(!showFixedDetails)}
+                    className="flex w-full items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-white"
+                  >
+                    <span>📌 Mis gastos fijos e ingresos base (Yape)</span>
+                    <span>{showFixedDetails ? '▲ Ocultar' : '▼ Ver detalle'}</span>
+                  </button>
+
+                  {showFixedDetails && (
+                    <div className="space-y-2 pt-1 text-[11px] text-slate-600">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
+                          👩 Mamá: S/ 70/sem (Lunes)
+                        </span>
+                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
+                          🐱 Croquetas: S/ 65/mes
+                        </span>
+                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
+                          🥫 Paté: S/ 6/sem
+                        </span>
+                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
+                          💡 Servicios: S/ 50/mes
+                        </span>
+                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
+                          ⚽ Fútbol: ~S/ 15/finde
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="rounded-full bg-emerald-50/90 px-2.5 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/70">
+                          💎 SaaS: S/ 150/mes (1ros del mes)
+                        </span>
+                        <span className="rounded-full bg-emerald-50/90 px-2.5 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/70">
+                          📘 Página FB: ~$50/mes (~S/ 300 c/2 meses)
+                        </span>
+                        <span className="rounded-full bg-amber-50/90 px-2.5 py-1 font-semibold text-amber-800 ring-1 ring-amber-200/70">
+                          🎄 Pago FB 25 Dic: $100 USD
+                        </span>
+                        <span className="rounded-full bg-sky-50/90 px-2.5 py-1 font-semibold text-sky-800 ring-1 ring-sky-200/70">
+                          🎬 Edición & 📣 Ads: Variables diarios
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Smart Diagnosis Banner */}
+              <section className="rounded-3xl border border-stone-200/80 bg-gradient-to-br from-white via-[#FAF8F5] to-emerald-50/40 p-5 shadow-sm sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br from-emerald-100 via-teal-50 to-white text-2xl shadow-md shadow-emerald-500/10 ring-1 ring-emerald-200/60">
+                      💰
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-extrabold text-slate-900">Pulso Financiero</h2>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                            netFlow >= 0
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-rose-100 text-rose-700'
+                          }`}
+                        >
+                          {netFlow >= 0 ? 'Flujo Positivo' : 'Flujo en Alerta'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                        {netFlow >= 0 ? (
+                          <>
+                            Vas bien, Martín: tu flujo neto es{' '}
+                            <span className="font-bold text-emerald-700">+ S/ {netFlow.toFixed(2)}</span>. Tienes{' '}
+                            <span className="font-bold text-slate-800">{runwayDays} días</span> de oxígeno y{' '}
+                            {clientsNeededForBase === 0 ? (
+                              <span className="font-bold text-emerald-700">tu base de S/ 500/mes ya está cubierta.</span>
+                            ) : (
+                              <>
+                                te faltan <span className="font-bold text-slate-800">{clientsNeededForBase} clientes</span> de Nilah IA para cubrir tu base de S/ 500/mes.
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            Ojo aquí: tus gastos superan tus ingresos por{' '}
+                            <span className="font-bold text-rose-600">S/ {Math.abs(netFlow).toFixed(2)}</span>.
+                            {topExpenseCategories[0] && (
+                              <>
+                                {' '}Tu mayor fuga es <span className="font-bold text-slate-800">{topExpenseCategories[0][0]}</span> (S/ {topExpenseCategories[0][1].toFixed(2)}).
+                              </>
+                            )}{' '}
+                            Runway actual: <span className="font-bold text-slate-800">{runwayDays} días</span>.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2.5 rounded-2xl border border-stone-200/80 bg-white px-3.5 py-2.5 shadow-xs">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-50 text-lg shadow-xs ring-1 ring-amber-200/60">
+                      🎯
+                    </span>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Meta Base MRR</p>
+                      <p className="text-xs font-extrabold text-slate-800">
+                        S/ {cockpit.mrr} / 500 ({mrrProgressPct}%)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4 KPI Cards */}
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-stone-200/70 bg-white p-3.5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Saldo Real</p>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-stone-100 to-white text-base shadow-xs ring-1 ring-stone-200/70">
+                        🏦
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xl font-extrabold text-slate-900">S/ {cockpit.balance}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">{runwayDays} días de runway</p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 p-3.5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Ingresos</p>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-white text-base shadow-xs ring-1 ring-emerald-200/70">
+                        📈
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xl font-extrabold text-emerald-700">+ S/ {totalIncome.toFixed(2)}</p>
+                    <p className="mt-0.5 text-[11px] text-emerald-600/80">
+                      {finances.filter((f) => f.type !== 'expense').length} registros
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-rose-200/70 bg-rose-50/70 p-3.5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700">Gastos</p>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-white text-base shadow-xs ring-1 ring-rose-200/70">
+                        📉
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xl font-extrabold text-rose-700">- S/ {totalExpense.toFixed(2)}</p>
+                    <p className="mt-0.5 text-[11px] text-rose-600/80">
+                      {finances.filter((f) => f.type === 'expense').length} registros
+                    </p>
+                  </div>
+                  <div
+                    className={`rounded-2xl border p-3.5 shadow-xs ${
+                      netFlow >= 0
+                        ? 'border-sky-200/70 bg-sky-50/70'
+                        : 'border-amber-200/70 bg-amber-50/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p
+                        className={`text-[10px] font-bold uppercase tracking-wider ${
+                          netFlow >= 0 ? 'text-sky-700' : 'text-amber-700'
+                        }`}
+                      >
+                        Flujo Neto
+                      </p>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-sky-100 to-white text-base shadow-xs ring-1 ring-sky-200/70">
+                        {netFlow >= 0 ? '⚡' : '🔥'}
+                      </span>
+                    </div>
+                    <p
+                      className={`mt-1 text-xl font-extrabold ${
+                        netFlow >= 0 ? 'text-sky-700' : 'text-amber-700'
+                      }`}
+                    >
+                      {netFlow >= 0 ? '+' : '-'} S/ {Math.abs(netFlow).toFixed(2)}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">Ingresos - Gastos</p>
+                  </div>
+                </div>
+              </section>
+                </div>
+              )}
+
+              {/* SUB-MÓDULO 2: PROYECTOS & METAS DE INGRESO */}
+              {finSubTab === 'proyectos' && (
+                <div className="space-y-4">
+                  {/* Meta de Ingreso a 15d / 30d / 3m */}
+                  <section className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 p-5 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br from-amber-100 to-white text-xl shadow-sm ring-1 ring-amber-200/60">
+                          🏆
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-extrabold text-slate-900">{finGoal.title}</h3>
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                              {finGoal.days === 90 ? '3 meses' : `${finGoal.days} días`}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600">
+                            {goalRemaining === 0 ? (
+                              <span className="font-bold text-emerald-700">🎉 ¡Meta cumplida! Superaste los S/ {finGoal.target}.</span>
+                            ) : (
+                              <>
+                                Te faltan <span className="font-bold text-slate-900">S/ {goalRemaining.toFixed(0)}</span> · Necesitas{' '}
+                                <span className="font-bold text-amber-700">S/ {goalDailyNeeded}/día</span> para lograrla.
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingGoal(!editingGoal)}
+                        className="shrink-0 rounded-xl border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-50"
+                      >
+                        {editingGoal ? 'Cerrar' : '✏️ Ajustar meta'}
+                      </button>
+                    </div>
+
+                    {/* Barra de progreso */}
+                    <div className="mt-4">
+                      <div className="mb-1 flex justify-between text-xs font-bold">
+                        <span className="text-slate-600">S/ {totalIncome.toFixed(0)} logrados</span>
+                        <span className="text-amber-700">{goalProgressPct}% de S/ {finGoal.target}</span>
+                      </div>
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-amber-100/80">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
+                          style={{ width: `${goalProgressPct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {editingGoal && (
+                      <div className="mt-4 grid grid-cols-1 gap-2.5 border-t border-amber-200/60 pt-3 sm:grid-cols-12">
+                        <input
+                          type="text"
+                          value={finGoal.title}
+                          onChange={(e) => saveFinGoal({ ...finGoal, title: e.target.value })}
+                          placeholder="Nombre de tu meta"
+                          className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-semibold outline-none sm:col-span-5"
+                        />
+                        <input
+                          type="number"
+                          value={finGoal.target}
+                          onChange={(e) => saveFinGoal({ ...finGoal, target: Number(e.target.value) || 0 })}
+                          placeholder="Monto S/"
+                          className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold outline-none sm:col-span-3"
+                        />
+                        <div className="flex gap-1.5 sm:col-span-4">
+                          {([15, 30, 90] as const).map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => saveFinGoal({ ...finGoal, days: d })}
+                              className={`flex-1 rounded-xl py-2 text-[11px] font-bold transition ${
+                                finGoal.days === d
+                                  ? 'bg-amber-500 text-white'
+                                  : 'border border-amber-200 bg-white text-slate-600 hover:bg-amber-50'
+                              }`}
+                            >
+                              {d === 90 ? '3m' : `${d}d`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-3xl border border-stone-200/80 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900">
+                          <span>🎯</span> Proyectos & Cobros por Entrar
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Registra trabajos de edición, campañas Ads o metas. Al cobrarlos, se suman directo a tu Yape.
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-right">
+                        <p className="text-[10px] font-bold uppercase text-emerald-700">Por cobrar</p>
+                        <p className="text-sm font-extrabold text-emerald-700">+ S/ {pendingProjectsTotal.toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={addFinProject} className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-12">
+                      <input
+                        type="text"
+                        required
+                        value={projTitle}
+                        onChange={(e) => setProjTitle(e.target.value)}
+                        placeholder="Ej: Edición video cliente..."
+                        className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400 focus:bg-white sm:col-span-5"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={projAmount}
+                        onChange={(e) => setProjAmount(e.target.value)}
+                        placeholder="Monto S/"
+                        className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-emerald-400 focus:bg-white sm:col-span-2"
+                      />
+                      <input
+                        type="date"
+                        value={projDate}
+                        onChange={(e) => setProjDate(e.target.value)}
+                        className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3 py-2.5 text-xs outline-none focus:border-emerald-400 focus:bg-white sm:col-span-3"
+                      />
+                      <button
+                        type="submit"
+                        className="w-full rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 sm:col-span-2"
+                      >
+                        Agregar
+                      </button>
+                    </form>
+
+                    <div className="space-y-2.5">
+                      {finProjects.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-stone-200 py-8 text-center text-xs text-slate-400">
+                          No tienes proyectos o cobros pendientes. ¡Agrega uno arriba!
+                        </div>
+                      ) : (
+                        finProjects.map((proj) => (
+                          <div
+                            key={proj.id}
+                            className={`flex flex-col gap-3 rounded-2xl border p-3.5 sm:flex-row sm:items-center sm:justify-between ${
+                              proj.status === 'collected'
+                                ? 'border-emerald-200/70 bg-emerald-50/40 opacity-75'
+                                : 'border-stone-200/80 bg-[#FAF8F5]'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm">{proj.status === 'collected' ? '✅' : '⏳'}</span>
+                                <p className="text-sm font-bold text-slate-800">{proj.title}</p>
+                                <span className="rounded-md bg-stone-200/70 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                                  {proj.expectedDate}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-sm font-extrabold text-emerald-700">+ S/ {proj.amount.toFixed(2)}</span>
+                              {proj.status === 'pending' && (
+                                <button
+                                  type="button"
+                                  onClick={() => collectFinProject(proj)}
+                                  className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-600"
+                                >
+                                  💜 Ya me Yapeó
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => deleteFinProject(proj.id)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                </div>
+              )}
+
+              {/* SUB-MÓDULO 3: REGISTRAR YAPEO */}
+              {finSubTab === 'registrar' && (
+                <div className="mx-auto max-w-xl">
+                  <section className="rounded-3xl border border-stone-200/80 bg-white p-5 shadow-sm">
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <span className="text-base">✨</span>
+                      Registrar Movimiento
+                    </h3>
+
+                    <form onSubmit={addFinanceMovement} className="space-y-3">
+                      {/* Type Toggle */}
+                      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#FAF8F5] p-1">
+                        <button
+                          type="button"
+                          onClick={() => setFinType('income')}
+                          className={`rounded-xl py-2 text-xs font-bold transition ${
+                            finType === 'income'
+                              ? 'bg-emerald-500 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Ingreso (+)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFinType('expense')}
+                          className={`rounded-xl py-2 text-xs font-bold transition ${
+                            finType === 'expense'
+                              ? 'bg-rose-500 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Gasto (-)
+                        </button>
+                      </div>
+
+                      {/* Quick Category Chips */}
+                      <div>
+                        <p className="mb-1.5 text-[11px] font-semibold text-slate-400">Atajos rápidos (Yape)</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(finType === 'income'
+                            ? [
+                                { label: 'Edición de Video', icon: '🎬', amount: '' },
+                                { label: 'Activar Ads', icon: '📣', amount: '' },
+                                { label: 'Pago Facebook', icon: '📘', amount: '300' },
+                                { label: 'Nilah IA · Suscripción', icon: '💎', amount: '150' },
+                                { label: 'Agencia / Cliente', icon: '🤝', amount: '' },
+                              ]
+                            : [
+                                { label: 'Mamá (Lunes)', icon: '👩', amount: '70' },
+                                { label: 'Croquetas Gatos', icon: '🐱', amount: '65' },
+                                { label: 'Paté Gatos', icon: '🥫', amount: '6' },
+                                { label: 'Servicios', icon: '💡', amount: '50' },
+                                { label: 'Fútbol Amigos', icon: '⚽', amount: '15' },
+                              ]
+                          ).map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() => {
+                                setFinCategory(preset.label);
+                                if (preset.amount) setFinAmount(preset.amount);
+                              }}
+                              className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                                finCategory === preset.label
+                                  ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                                  : 'border-stone-200 bg-[#FAF8F5] text-slate-600 hover:border-stone-300'
+                              }`}
+                            >
+                              <span>{preset.icon}</span>
+                              <span>{preset.label}</span>
+                              {preset.amount && <span className="text-slate-400">S/{preset.amount}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={finAmount}
+                          onChange={(e) => setFinAmount(e.target.value)}
+                          placeholder="Monto S/"
+                          className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-emerald-400 focus:bg-white"
+                        />
+                        <input
+                          type="date"
+                          value={finDate}
+                          onChange={(e) => setFinDate(e.target.value)}
+                          className="rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400 focus:bg-white"
+                        />
+                      </div>
+
+                      <input
+                        type="text"
+                        required
+                        value={finCategory}
+                        onChange={(e) => setFinCategory(e.target.value)}
+                        placeholder="Categoría (ej: Ads Cuñada, Comida Gatos...)"
+                        className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400 focus:bg-white"
+                      />
+
+                      <input
+                        type="text"
+                        value={finNote}
+                        onChange={(e) => setFinNote(e.target.value)}
+                        placeholder="Nota opcional (ej: Pago mensual salón...)"
+                        className="w-full rounded-2xl border border-stone-200 bg-[#FAF8F5] px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400 focus:bg-white"
+                      />
+
+                      <button
+                        type="submit"
+                        className={`w-full rounded-2xl px-4 py-2.5 text-sm font-bold text-white transition ${
+                          finType === 'income'
+                            ? 'bg-emerald-500 hover:bg-emerald-600'
+                            : 'bg-rose-500 hover:bg-rose-600'
+                        }`}
+                      >
+                        {finType === 'income' ? 'Registrar Ingreso' : 'Registrar Gasto'}
+                      </button>
+                    </form>
+                  </section>
+                </div>
+              )}
+
+              {/* SUB-MÓDULO 4: MOVIMIENTOS & ANÁLISIS */}
+              {finSubTab === 'movimientos' && (
+                <div className="space-y-4">
+                  {/* Acordeón: ¿Dónde se va el dinero? */}
+                  {topExpenseCategories.length > 0 && (
+                    <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}
+                        className="flex w-full items-center justify-between text-sm font-extrabold text-slate-900"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-base">💸</span>
+                          ¿Dónde se va el dinero? (Top categorías)
+                        </span>
+                        <span className="text-xs font-bold text-slate-500">
+                          {showExpenseBreakdown ? '▲ Ocultar' : '▼ Ver gráfico'}
+                        </span>
+                      </button>
+                      {showExpenseBreakdown && (
+                        <div className="mt-4 space-y-3 border-t border-stone-100 pt-3">
+                          {topExpenseCategories.map(([cat, amt]) => {
+                            const pct = totalExpense > 0 ? Math.round((amt / totalExpense) * 100) : 0;
+                            return (
+                              <div key={cat}>
+                                <div className="mb-1 flex items-center justify-between text-xs">
+                                  <span className="font-semibold text-slate-700">{cat}</span>
+                                  <span className="font-bold text-slate-900">
+                                    S/ {amt.toFixed(2)} <span className="text-slate-400">({pct}%)</span>
+                                  </span>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
+                                  <div
+                                    className="h-full rounded-full bg-rose-400 transition-all"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {/* Lista de Movimientos */}
+                  <section className="rounded-3xl border border-stone-200/80 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h3 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <span className="text-base">🧾</span>
+                      Movimientos ({filteredFinances.length})
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="text"
+                        value={finSearch}
+                        onChange={(e) => setFinSearch(e.target.value)}
+                        placeholder="Buscar..."
+                        className="rounded-xl border border-stone-200 bg-[#FAF8F5] px-3 py-1.5 text-xs outline-none focus:border-emerald-400 focus:bg-white"
+                      />
+                      <div className="flex rounded-xl bg-[#FAF8F5] p-0.5">
+                        {(['all', 'income', 'expense'] as const).map((tab) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setFinFilter(tab)}
+                            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                              finFilter === tab
+                                ? 'bg-white text-slate-900 shadow-2xs'
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            {tab === 'all' ? 'Todos' : tab === 'income' ? 'Ingresos' : 'Gastos'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {filteredFinances.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-stone-200 py-10 text-center text-xs text-slate-400">
+                        No hay movimientos que coincidan con tu búsqueda.
+                      </div>
+                    ) : (
+                      filteredFinances.map((f) => {
+                        const isEditing = editingFinanceId === f.id;
+                        if (isEditing) {
+                          return (
+                            <div
+                              key={f.id}
+                              className="space-y-2 rounded-2xl border border-emerald-300 bg-emerald-50/40 p-3.5"
+                            >
+                              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <select
+                                  value={editFinType}
+                                  onChange={(e) => setEditFinType(e.target.value as 'income' | 'expense')}
+                                  className="rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold outline-none"
+                                >
+                                  <option value="income">Ingreso (+)</option>
+                                  <option value="expense">Gasto (-)</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editFinAmount}
+                                  onChange={(e) => setEditFinAmount(e.target.value)}
+                                  className="rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold outline-none"
+                                />
+                                <input
+                                  type="date"
+                                  value={editFinDate}
+                                  onChange={(e) => setEditFinDate(e.target.value)}
+                                  className="rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs outline-none sm:col-span-2"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <input
+                                  type="text"
+                                  value={editFinCategory}
+                                  onChange={(e) => setEditFinCategory(e.target.value)}
+                                  placeholder="Categoría"
+                                  className="rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  value={editFinNote}
+                                  onChange={(e) => setEditFinNote(e.target.value)}
+                                  placeholder="Nota"
+                                  className="rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs outline-none"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingFinanceId(null)}
+                                  className="flex items-center gap-1 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-stone-50"
+                                >
+                                  <X className="h-3.5 w-3.5" /> Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => saveEditFinance(f.id)}
+                                  className="flex items-center gap-1 rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-600"
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Guardar
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={f.id}
+                            className="group flex items-center justify-between rounded-2xl border border-stone-100 bg-[#FAF8F5] px-4 py-3 transition hover:border-stone-200 hover:bg-white"
+                          >
+                            <div className="min-w-0 flex-1 pr-3">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-bold text-slate-800">{f.category}</p>
+                                {f.date && (
+                                  <span className="shrink-0 rounded-md bg-stone-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                                    {f.date.split('T')[0]}
+                                  </span>
+                                )}
+                              </div>
+                              {f.note && <p className="truncate text-xs text-slate-500">{f.note}</p>}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`text-sm font-extrabold ${
+                                  f.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'
+                                }`}
+                              >
+                                {f.type === 'expense' ? '-' : '+'} S/ {Number(f.amount).toFixed(2)}
+                              </span>
+                              <div className="flex items-center gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditFinance(f)}
+                                  title="Editar"
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-stone-100 hover:text-slate-700"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteFinanceMovement(f.id)}
+                                  title="Eliminar"
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'rachas' && (
-            <section className="rounded-3xl border border-stone-200/80 bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <Flame className="h-5 w-5 text-orange-500" />
-                <h2 className="text-base font-bold text-slate-900">Rachas Diarias (Meta 30 días)</h2>
-              </div>
-              <div className="space-y-3">
-                {streaks.map((streak) => {
-                  const checkedToday = Boolean(todayStr && streak.last_checked_date === todayStr);
-                  return (
-                    <div
-                      key={streak.id}
-                      className="rounded-2xl border border-stone-100 bg-[#FAF8F5] p-4"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-bold text-slate-800">{streak.name}</p>
-                          <p className="mt-0.5 text-xs text-slate-500">{streak.description}</p>
-                        </div>
-                        <span className="rounded-xl bg-orange-100 px-2.5 py-1 text-xs font-extrabold text-orange-700">
-                          {streak.current_streak}d
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => checkInStreak(streak)}
-                        disabled={checkedToday}
-                        className={`mt-3 w-full rounded-xl py-2 text-xs font-bold transition ${
-                          checkedToday
-                            ? 'bg-emerald-100 text-emerald-700 cursor-default'
-                            : 'bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95'
-                        }`}
-                      >
-                        {checkedToday ? '✓ Cumplido hoy' : 'Marcar día cumplido'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+            <RachasModule streaks={streaks} todayStr={todayStr} onCheckIn={checkInStreak} />
           )}
         </main>
 
@@ -2877,7 +3890,7 @@ export default function KoratCockpit() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('rachas')}
+                    onClick={() => navigateTab('rachas')}
                     className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-amber-700"
                   >
                     Marcar
@@ -2993,7 +4006,7 @@ export default function KoratCockpit() {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => navigateTab(item.id)}
               className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] font-semibold ${
                 isActive ? 'text-sky-600' : 'text-slate-400'
               }`}

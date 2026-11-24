@@ -3213,37 +3213,69 @@ export default function KoratCockpit() {
                   </button>
 
                   {showFixedDetails && (
-                    <div className="space-y-2 pt-1 text-[11px] text-slate-600">
-                      <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
-                          👩 Mamá: S/ 70/sem (Lunes)
-                        </span>
-                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
-                          🐱 Croquetas: S/ 65/mes
-                        </span>
-                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
-                          🥫 Paté: S/ 6/sem
-                        </span>
-                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
-                          💡 Servicios: S/ 50/mes
-                        </span>
-                        <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold ring-1 ring-purple-100">
-                          ⚽ Fútbol: ~S/ 15/finde
-                        </span>
+                    <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
+                      {/* Columna Gastos Fijos */}
+                      <div className="rounded-2xl border border-rose-200/70 bg-white p-3.5 shadow-2xs">
+                        <div className="mb-2.5 flex items-center justify-between border-b border-rose-100 pb-2">
+                          <span className="flex items-center gap-1.5 text-xs font-extrabold text-rose-700">
+                            <span>📉</span> Mis Gastos Fijos
+                          </span>
+                          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-extrabold text-rose-700">
+                            ~S/ 509 / mes
+                          </span>
+                        </div>
+                        <div className="divide-y divide-stone-100 text-xs">
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">👩 Mamá (cada lunes)</span>
+                            <span className="font-bold text-slate-900">S/ 70 / sem</span>
+                          </div>
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">🐱 Croquetas gatos</span>
+                            <span className="font-bold text-slate-900">S/ 65 / mes</span>
+                          </div>
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">🥫 Paté gatos</span>
+                            <span className="font-bold text-slate-900">S/ 6 / sem</span>
+                          </div>
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">💡 Servicios (inicio de mes)</span>
+                            <span className="font-bold text-slate-900">S/ 50 / mes</span>
+                          </div>
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">⚽ Fútbol (fines de semana)</span>
+                            <span className="font-bold text-slate-900">~S/ 15 / finde</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full bg-emerald-50/90 px-2.5 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/70">
-                          💎 SaaS: S/ 150/mes (1ros del mes)
-                        </span>
-                        <span className="rounded-full bg-emerald-50/90 px-2.5 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/70">
-                          📘 Página FB: ~$50/mes (~S/ 300 c/2 meses)
-                        </span>
-                        <span className="rounded-full bg-amber-50/90 px-2.5 py-1 font-semibold text-amber-800 ring-1 ring-amber-200/70">
-                          🎄 Pago FB 25 Dic: $100 USD
-                        </span>
-                        <span className="rounded-full bg-sky-50/90 px-2.5 py-1 font-semibold text-sky-800 ring-1 ring-sky-200/70">
-                          🎬 Edición & 📣 Ads: Variables diarios
-                        </span>
+
+                      {/* Columna Ingresos Base */}
+                      <div className="rounded-2xl border border-emerald-200/70 bg-white p-3.5 shadow-2xs">
+                        <div className="mb-2.5 flex items-center justify-between border-b border-emerald-100 pb-2">
+                          <span className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-700">
+                            <span>📈</span> Mis Ingresos Base
+                          </span>
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                            ~S/ 300/mes + var.
+                          </span>
+                        </div>
+                        <div className="divide-y divide-stone-100 text-xs">
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">💎 SaaS Nilah IA (1ros)</span>
+                            <span className="font-bold text-emerald-700">S/ 150 / mes</span>
+                          </div>
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">📘 Página FB (~$50/mes)</span>
+                            <span className="font-bold text-emerald-700">~S/ 300 c/2m</span>
+                          </div>
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">🎄 Bono FB (25 Dic)</span>
+                            <span className="font-bold text-amber-700">$100 USD</span>
+                          </div>
+                          <div className="flex items-center justify-between py-1.5">
+                            <span className="font-medium text-slate-700">🎬 Edición & 📣 Ads</span>
+                            <span className="font-bold text-sky-700">Variable diario</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

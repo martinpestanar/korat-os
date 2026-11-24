@@ -219,7 +219,7 @@ export default function KoratCockpit() {
   const [finAmount, setFinAmount] = useState('');
   const [finCategory, setFinCategory] = useState('');
   const [finNote, setFinNote] = useState('');
-  const [finDate, setFinDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [finDate, setFinDate] = useState('');
   const [finFilter, setFinFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [finSearch, setFinSearch] = useState('');
   const [editingFinanceId, setEditingFinanceId] = useState<string | null>(null);
@@ -239,7 +239,7 @@ export default function KoratCockpit() {
   >([]);
   const [projTitle, setProjTitle] = useState('');
   const [projAmount, setProjAmount] = useState('');
-  const [projDate, setProjDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [projDate, setProjDate] = useState('');
   const [finGoal, setFinGoal] = useState<{ title: string; target: number; days: 15 | 30 | 90 }>({
     title: 'Meta 30 días · Estabilidad',
     target: 500,
@@ -248,6 +248,9 @@ export default function KoratCockpit() {
   const [editingGoal, setEditingGoal] = useState(false);
 
   useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setFinDate((prev) => prev || today);
+    setProjDate((prev) => prev || today);
     try {
       const saved = localStorage.getItem('korat_fin_checkins');
       if (saved) setFinCheckins(JSON.parse(saved));
@@ -750,26 +753,31 @@ export default function KoratCockpit() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
 
-  const finTodayISO = new Date().toISOString().split('T')[0];
-  const finYesterdayDate = new Date();
-  finYesterdayDate.setDate(finYesterdayDate.getDate() - 1);
-  const finYesterdayISO = finYesterdayDate.toISOString().split('T')[0];
+  const finTodayISO = todayStr || '';
+  const finYesterdayISO = (() => {
+    if (!todayStr) return '';
+    const d = new Date(todayStr + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  })();
 
   const isFinDateUpdated = (iso: string) =>
-    finCheckins.includes(iso) || finances.some((f) => f.date && f.date.startsWith(iso));
+    Boolean(iso) && (finCheckins.includes(iso) || finances.some((f) => f.date && f.date.startsWith(iso)));
 
   const updatedToday = isFinDateUpdated(finTodayISO);
   const updatedYesterday = isFinDateUpdated(finYesterdayISO);
 
   let finUpdateStreak = 0;
-  for (let i = 0; i < 60; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - (updatedToday ? i : i + 1));
-    const iso = d.toISOString().split('T')[0];
-    if (isFinDateUpdated(iso)) {
-      finUpdateStreak++;
-    } else {
-      break;
+  if (todayStr) {
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(todayStr + 'T12:00:00');
+      d.setDate(d.getDate() - (updatedToday ? i : i + 1));
+      const iso = d.toISOString().split('T')[0];
+      if (isFinDateUpdated(iso)) {
+        finUpdateStreak++;
+      } else {
+        break;
+      }
     }
   }
 

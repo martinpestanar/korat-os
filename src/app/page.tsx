@@ -240,6 +240,10 @@ export default function KoratCockpit() {
   const [projTitle, setProjTitle] = useState('');
   const [projAmount, setProjAmount] = useState('');
   const [projDate, setProjDate] = useState('');
+  const [editingProjId, setEditingProjId] = useState<string | null>(null);
+  const [editProjTitle, setEditProjTitle] = useState('');
+  const [editProjAmount, setEditProjAmount] = useState('');
+  const [editProjDate, setEditProjDate] = useState('');
   const [finGoal, setFinGoal] = useState<{ title: string; target: number; days: 15 | 30 | 90 }>({
     title: 'Meta 30 días · Estabilidad',
     target: 500,
@@ -863,6 +867,26 @@ export default function KoratCockpit() {
 
   function deleteFinProject(id: string) {
     saveFinProjects(finProjects.filter((p) => p.id !== id));
+  }
+
+  function startEditProj(proj: (typeof finProjects)[number]) {
+    setEditingProjId(proj.id);
+    setEditProjTitle(proj.title);
+    setEditProjAmount(String(proj.amount));
+    setEditProjDate(proj.expectedDate || '');
+  }
+
+  function saveEditProj(id: string) {
+    const amt = parseFloat(editProjAmount);
+    if (!editProjTitle.trim() || !amt || amt <= 0) return;
+    saveFinProjects(
+      finProjects.map((p) =>
+        p.id === id
+          ? { ...p, title: editProjTitle.trim(), amount: amt, expectedDate: editProjDate }
+          : p
+      )
+    );
+    setEditingProjId(null);
   }
 
   function saveFinGoal(next: typeof finGoal) {
@@ -3418,7 +3442,7 @@ export default function KoratCockpit() {
                           Registra trabajos de edición, campañas Ads o metas. Al cobrarlos, se suman directo a tu Yape.
                         </p>
                       </div>
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-right">
+                      <div className="shrink-0 whitespace-nowrap rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-right">
                         <p className="text-[10px] font-bold uppercase text-emerald-700">Por cobrar</p>
                         <p className="text-sm font-extrabold text-emerald-700">+ S/ {pendingProjectsTotal.toFixed(2)}</p>
                       </div>
@@ -3462,7 +3486,53 @@ export default function KoratCockpit() {
                           No tienes proyectos o cobros pendientes. ¡Agrega uno arriba!
                         </div>
                       ) : (
-                        finProjects.map((proj) => (
+                        finProjects.map((proj) => {
+                          const isEditingProj = editingProjId === proj.id;
+                          if (isEditingProj) {
+                            return (
+                              <div
+                                key={proj.id}
+                                className="grid grid-cols-1 gap-2 rounded-2xl border border-emerald-300 bg-emerald-50/40 p-3 sm:grid-cols-12"
+                              >
+                                <input
+                                  type="text"
+                                  value={editProjTitle}
+                                  onChange={(e) => setEditProjTitle(e.target.value)}
+                                  className="rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold outline-none sm:col-span-5"
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editProjAmount}
+                                  onChange={(e) => setEditProjAmount(e.target.value)}
+                                  className="rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold outline-none sm:col-span-2"
+                                />
+                                <input
+                                  type="date"
+                                  value={editProjDate}
+                                  onChange={(e) => setEditProjDate(e.target.value)}
+                                  className="rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs outline-none sm:col-span-3"
+                                />
+                                <div className="flex justify-end gap-1.5 sm:col-span-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingProjId(null)}
+                                    className="rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-stone-50"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => saveEditProj(proj.id)}
+                                    className="rounded-xl bg-emerald-500 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-600"
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
                           <div
                             key={proj.id}
                             className={`flex flex-col gap-3 rounded-2xl border p-3.5 sm:flex-row sm:items-center sm:justify-between ${
@@ -3475,22 +3545,34 @@ export default function KoratCockpit() {
                               <div className="flex items-center gap-2">
                                 <span className="text-sm">{proj.status === 'collected' ? '✅' : '⏳'}</span>
                                 <p className="text-sm font-bold text-slate-800">{proj.title}</p>
-                                <span className="rounded-md bg-stone-200/70 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
-                                  {proj.expectedDate}
-                                </span>
+                                {proj.expectedDate && (
+                                  <span className="rounded-md bg-stone-200/70 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                                    {proj.expectedDate}
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-sm font-extrabold text-emerald-700">+ S/ {proj.amount.toFixed(2)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="whitespace-nowrap text-sm font-extrabold text-emerald-700">
+                                + S/ {proj.amount.toFixed(2)}
+                              </span>
                               {proj.status === 'pending' && (
                                 <button
                                   type="button"
                                   onClick={() => collectFinProject(proj)}
-                                  className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-600"
+                                  className="whitespace-nowrap rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-600"
                                 >
                                   💜 Ya me Yapeó
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => startEditProj(proj)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-stone-200/60 hover:text-slate-700"
+                                title="Editar"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => deleteFinProject(proj.id)}
@@ -3501,7 +3583,8 @@ export default function KoratCockpit() {
                               </button>
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </section>

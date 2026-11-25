@@ -285,6 +285,18 @@ export default function KoratCockpit() {
   useEffect(() => {
     setTodayStr(new Date().toISOString().split('T')[0]);
     loadAllData();
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadAllData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
   }, []);
 
   async function refreshCockpit() {
